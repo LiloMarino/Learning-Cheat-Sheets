@@ -1,0 +1,27 @@
+body {
+    background-color: #f3f4f6;
+    background-image: repeating-linear-gradient(45deg,
+            #e5e7eb,
+            #e5e7eb 1px,
+            transparent 1px,
+            transparent 20px);
+    color: #111827;
+}
+
+
+.card {
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.search-container {
+    transition: all 0.3s ease;
+}
+
+.search-container:focus-within {
+    transform: scale(1.02);
+}
