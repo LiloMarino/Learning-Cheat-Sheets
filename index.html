@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimalist Card Collection</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #f3f4f6;
+            background-image: repeating-linear-gradient(
+                45deg,
+                #e5e7eb,
+                #e5e7eb 1px,
+                transparent 1px,
+                transparent 20px
+            );
+            color: #111827;
+        }
+
+    
+        .card {
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        
+        .search-container {
+            transition: all 0.3s ease;
+        }
+        
+        .search-container:focus-within {
+            transform: scale(1.02);
+        }
+        
+    </style>
+</head>
+<body class="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">Knowledge Base</h1>
+            <p class="text-gray-600">Find and download resources</p>
+        </div>
+        
+        <!-- Search Bar -->
+        <div class="search-container mb-12 mx-auto max-w-2xl">
+            <div class="relative">
+                <input type="text" id="searchInput" placeholder="Search documents..." 
+                       class="w-full px-6 py-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm text-gray-700">
+                <div class="absolute right-3 top-4 text-gray-400">
+                    <i class="fas fa-search"></i>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Cards Grid -->
+        <div id="cardsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Card 1 -->
+            <div class="card bg-white rounded-xl shadow-md overflow-hidden p-6" data-title="Getting Started Guide">
+                <h2 class="text-xl font-semibold text-gray-800 mb-3">
+                    <a href="https://example.com/getting-started" class="hover:text-blue-600 transition-colors" target="_blank">Getting Started Guide</a>
+                </h2>
+                <p class="text-gray-600 mb-4">A comprehensive guide to help you start using our platform effectively with all the basic features explained.</p>
+                <div class="flex justify-end space-x-4">
+                    <button class="download-btn text-gray-700 hover:text-blue-600 transition-colors" data-file="getting-started" data-type="md">
+                        <i class="fas fa-file-alt mr-1"></i> Markdown
+                    </button>
+                    <button class="download-btn text-gray-700 hover:text-red-600 transition-colors" data-file="getting-started" data-type="pdf">
+                        <i class="fas fa-file-pdf mr-1"></i> PDF
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Card 2 -->
+            <div class="card bg-white rounded-xl shadow-md overflow-hidden p-6" data-title="Advanced Configuration">
+                <h2 class="text-xl font-semibold text-gray-800 mb-3">
+                    <a href="https://example.com/advanced-config" class="hover:text-blue-600 transition-colors" target="_blank">Advanced Configuration</a>
+                </h2>
+                <p class="text-gray-600 mb-4">Learn about advanced settings and customization options to tailor the platform to your specific needs.</p>
+                <div class="flex justify-end space-x-4">
+                    <button class="download-btn text-gray-700 hover:text-blue-600 transition-colors" data-file="advanced-config" data-type="md">
+                        <i class="fas fa-file-alt mr-1"></i> Markdown
+                    </button>
+                    <button class="download-btn text-gray-700 hover:text-red-600 transition-colors" data-file="advanced-config" data-type="pdf">
+                        <i class="fas fa-file-pdf mr-1"></i> PDF
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Card 3 -->
+            <div class="card bg-white rounded-xl shadow-md overflow-hidden p-6" data-title="API Documentation">
+                <h2 class="text-xl font-semibold text-gray-800 mb-3">
+                    <a href="https://example.com/api-docs" class="hover:text-blue-600 transition-colors" target="_blank">API Documentation</a>
+                </h2>
+                <p class="text-gray-600 mb-4">Complete reference for our REST API with examples for all endpoints and authentication methods.</p>
+                <div class="flex justify-end space-x-4">
+                    <button class="download-btn text-gray-700 hover:text-blue-600 transition-colors" data-file="api-docs" data-type="md">
+                        <i class="fas fa-file-alt mr-1"></i> Markdown
+                    </button>
+                    <button class="download-btn text-gray-700 hover:text-red-600 transition-colors" data-file="api-docs" data-type="pdf">
+                        <i class="fas fa-file-pdf mr-1"></i> PDF
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Card 4 -->
+            <div class="card bg-white rounded-xl shadow-md overflow-hidden p-6" data-title="Troubleshooting">
+                <h2 class="text-xl font-semibold text-gray-800 mb-3">
+                    <a href="https://example.com/troubleshooting" class="hover:text-blue-600 transition-colors" target="_blank">Troubleshooting</a>
+                </h2>
+                <p class="text-gray-600 mb-4">Common issues and their solutions to help you resolve problems quickly without support intervention.</p>
+                <div class="flex justify-end space-x-4">
+                    <button class="download-btn text-gray-700 hover:text-blue-600 transition-colors" data-file="troubleshooting" data-type="md">
+                        <i class="fas fa-file-alt mr-1"></i> Markdown
+                    </button>
+                    <button class="download-btn text-gray-700 hover:text-red-600 transition-colors" data-file="troubleshooting" data-type="pdf">
+                        <i class="fas fa-file-pdf mr-1"></i> PDF
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Card 5 -->
+            <div class="card bg-white rounded-xl shadow-md overflow-hidden p-6" data-title="Security Best Practices">
+                <h2 class="text-xl font-semibold text-gray-800 mb-3">
+                    <a href="https://example.com/security" class="hover:text-blue-600 transition-colors" target="_blank">Security Best Practices</a>
+                </h2>
+                <p class="text-gray-600 mb-4">Guidelines to ensure your implementation follows security best practices to protect your data.</p>
+                <div class="flex justify-end space-x-4">
+                    <button class="download-btn text-gray-700 hover:text-blue-600 transition-colors" data-file="security" data-type="md">
+                        <i class="fas fa-file-alt mr-1"></i> Markdown
+                    </button>
+                    <button class="download-btn text-gray-700 hover:text-red-600 transition-colors" data-file="security" data-type="pdf">
+                        <i class="fas fa-file-pdf mr-1"></i> PDF
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Card 6 -->
+            <div class="card bg-white rounded-xl shadow-md overflow-hidden p-6" data-title="Migration Guide">
+                <h2 class="text-xl font-semibold text-gray-800 mb-3">
+                    <a href="https://example.com/migration" class="hover:text-blue-600 transition-colors" target="_blank">Migration Guide</a>
+                </h2>
+                <p class="text-gray-600 mb-4">Step-by-step instructions for migrating from previous versions or alternative solutions to our platform.</p>
+                <div class="flex justify-end space-x-4">
+                    <button class="download-btn text-gray-700 hover:text-blue-600 transition-colors" data-file="migration" data-type="md">
+                        <i class="fas fa-file-alt mr-1"></i> Markdown
+                    </button>
+                    <button class="download-btn text-gray-700 hover:text-red-600 transition-colors" data-file="migration" data-type="pdf">
+                        <i class="fas fa-file-pdf mr-1"></i> PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Empty State (hidden by default) -->
+        <div id="emptyState" class="hidden text-center py-16">
+            <i class="fas fa-search fa-3x text-gray-300 mb-4"></i>
+            <h3 class="text-xl font-medium text-gray-500">No results found</h3>
+            <p class="text-gray-400 mt-2">Try adjusting your search query</p>
+        </div>
+    </div>
+
+    <script>
+        // Search functionality
+        const searchInput = document.getElementById('searchInput');
+        const cardsContainer = document.getElementById('cardsContainer');
+        const cards = document.querySelectorAll('.card');
+        const emptyState = document.getElementById('emptyState');
+        
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            let hasResults = false;
+            
+            cards.forEach(card => {
+                const title = card.getAttribute('data-title').toLowerCase();
+                if (title.includes(searchTerm)) {
+                    card.classList.remove('hidden');
+                    hasResults = true;
+                } else {
+                    card.classList.add('hidden');
+                }
+            });
+            
+            if (hasResults || searchTerm === '') {
+                emptyState.classList.add('hidden');
+                cardsContainer.classList.remove('hidden');
+            } else {
+                emptyState.classList.remove('hidden');
+                cardsContainer.classList.add('hidden');
+            }
+        });
+        
+        // Download functionality
+        document.querySelectorAll('.download-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const fileName = this.getAttribute('data-file');
+                const fileType = this.getAttribute('data-type');
+                const title = this.closest('.card').getAttribute('data-title');
+                
+                // In a real app, this would trigger an actual download
+                // For demo purposes, we'll just show an alert
+                if (fileType === 'md') {
+                    alert(`Downloading Markdown version of: ${title}\nFile would be saved as: ${fileName}.md`);
+                } else {
+                    alert(`Downloading PDF version of: ${title}\nFile would be saved as: ${fileName}.pdf`);
+                }
+                
+                // Simulate download (commented out as it would actually download in a real browser)
+                /*
+                const link = document.createElement('a');
+                link.href = `/download/${fileName}.${fileType}`;
+                link.download = `${fileName}.${fileType}`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                */
+            });
+        });
+    </script>
+</body>
+</html>
