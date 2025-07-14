@@ -4,3 +4,12 @@ collections:
   cheatsheets:
     output: true
     permalink: /cheatsheets/:name/
+markdown: kramdown
+exclude:
+  - cheatsheets/
+  - assets/html/
+  - assets/pdfs/
+  - .github/
+  - node_modules/
+  - package.json
+  - package-lock.json
