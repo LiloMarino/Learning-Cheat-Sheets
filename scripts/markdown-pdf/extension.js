@@ -10,8 +10,11 @@ const cheerio = require('cheerio');
 const markdownIt = require('markdown-it');
 const puppeteer = require('puppeteer-core');
 
-
-
+/**
+ * Converte arquivo Markdown em arquivo(s) nos formatos HTML, PDF, PNG ou JPEG
+ * @param {string} inputPath - Caminho do arquivo Markdown
+ * @param {string} [option_type='pdf'] - Tipo de saída: 'html', 'pdf', 'png', 'jpeg' ou 'all'
+ */
 export async function markdownPdfStandalone(inputPath, option_type = 'pdf') {
   try {
     const types_format = ['html', 'pdf', 'png', 'jpeg'];
@@ -27,8 +30,8 @@ export async function markdownPdfStandalone(inputPath, option_type = 'pdf') {
     }
 
     const ext = path.extname(inputPath);
-    const text = fs.readFileSync(inputPath, 'utf-8');
-    const uri = { fsPath: inputPath }; // mock para compatibilidade de chamada
+    const markdownString = fs.readFileSync(inputPath, 'utf-8');
+    const uri = { fsPath: inputPath }; // mock para compatibilidade
 
     for (const type of types) {
       const filename = inputPath.replace(ext, '.' + type);
@@ -39,29 +42,28 @@ export async function markdownPdfStandalone(inputPath, option_type = 'pdf') {
         plantumlServer: 'https://www.plantuml.com/plantuml',
         enableInclude: true
       });
-      const html = makeHtml(content, uri);
-      await exportPdf(html, filename, type, uri); // você vai adaptar exportPdf depois
+      const html = makeHtml(content, inputPath);
+      await exportPdf(html, filename, type, {}); // pode-se passar options conforme necessidade
       console.log(`Exported to ${filename}`);
     }
-
   } catch (error) {
     console.error('markdownPdfStandalone() error:', error);
   }
 }
 
-
-
-/*
- * convert markdown to html (markdown-it)
+/**
+ * Converte texto Markdown para HTML usando markdown-it e plugins
+ * @param {string} filename - Caminho do arquivo markdown (para resolver imagens e includes)
+ * @param {string} type - Tipo de saída ('html', 'pdf', etc), para tratar paths de imagem
+ * @param {string} text - Conteúdo markdown bruto
+ * @param {object} [options={}] - Opções para controle de plugins e features
+ * @returns {string} HTML convertido
  */
 function convertMarkdownToHtml(filename, type, text, options = {}) {
   try {
     const matterParts = grayMatter(text);
 
-    const breaks = setBooleanValue(
-      matterParts.data.breaks,
-      options.breaks ?? false
-    );
+    const breaks = setBooleanValue(matterParts.data.breaks, options.breaks ?? false);
 
     const md = markdownIt({
       html: true,
@@ -70,11 +72,10 @@ function convertMarkdownToHtml(filename, type, text, options = {}) {
         if (lang && lang.match(/\bmermaid\b/i)) {
           return `<div class="mermaid">${str}</div>`;
         }
-
         if (lang && highlight.getLanguage(lang)) {
           try {
             return `<pre class="hljs"><code><div>${highlight.highlight(lang, str, true).value}</div></code></pre>`;
-          } catch (err) {
+          } catch {
             return `<pre class="hljs"><code>${md.utils.escapeHtml(str)}</code></pre>`;
           }
         }
@@ -82,7 +83,7 @@ function convertMarkdownToHtml(filename, type, text, options = {}) {
       }
     });
 
-    // imagem
+    // Corrige caminho das imagens
     const defaultRender = md.renderer.rules.image;
     md.renderer.rules.image = function (tokens, idx, opts, env, self) {
       let token = tokens[idx];
@@ -105,14 +106,10 @@ function convertMarkdownToHtml(filename, type, text, options = {}) {
       };
     }
 
-    // checkbox
+    // Plugins
     md.use(require('markdown-it-checkbox'));
 
-    // emoji
-    const enableEmoji = setBooleanValue(
-      matterParts.data.emoji,
-      options.emoji ?? false
-    );
+    const enableEmoji = setBooleanValue(matterParts.data.emoji, options.emoji ?? false);
     if (enableEmoji) {
       const emojiDefs = require(path.join(__dirname, 'data', 'emoji.json'));
       md.use(require('markdown-it-emoji'), { defs: emojiDefs });
@@ -125,10 +122,8 @@ function convertMarkdownToHtml(filename, type, text, options = {}) {
       };
     }
 
-    // named headers
     md.use(require('markdown-it-named-headers'), { slugify: Slug });
 
-    // container
     md.use(require('markdown-it-container'), '', {
       validate: name => name.trim().length,
       render: (tokens, idx) => {
@@ -138,7 +133,6 @@ function convertMarkdownToHtml(filename, type, text, options = {}) {
       }
     });
 
-    // PlantUML
     if (options.enablePlantUML) {
       md.use(require('markdown-it-plantuml'), {
         openMarker: matterParts.data.plantumlOpenMarker || options.plantumlOpenMarker || '@startuml',
@@ -147,7 +141,6 @@ function convertMarkdownToHtml(filename, type, text, options = {}) {
       });
     }
 
-    // include files
     if (options.enableInclude) {
       md.use(require('markdown-it-include'), {
         root: path.dirname(filename),
@@ -156,74 +149,74 @@ function convertMarkdownToHtml(filename, type, text, options = {}) {
     }
 
     return md.render(matterParts.content);
+
   } catch (error) {
-    console.error('convertMarkdownToHtml()', error);
+    console.error('convertMarkdownToHtml() error:', error);
     return '';
   }
 }
 
-/*
- * https://github.com/microsoft/vscode/blob/ca4ceeb87d4ff935c52a7af0671ed9779657e7bd/extensions/markdown-language-features/src/slugify.ts#L26
+/**
+ * Função para slugify de títulos (headers) usados em ancoras
+ * @param {string} string - Texto a ser convertido em slug
+ * @returns {string} Slug URI-safe
  */
 function Slug(string) {
   try {
-    var stg = encodeURI(
+    return encodeURI(
       string.trim()
             .toLowerCase()
-            .replace(/\s+/g, '-') // Replace whitespace with -
-            .replace(/[\]\[\!\'\#\$\%\&\(\)\*\+\,\.\/\:\;\<\=\>\?\@\\\^\_\{\|\}\~\`。，、；：？！…—·ˉ¨‘’“”々～‖∶＂＇｀｜〃〔〕〈〉《》「」『』．〖〗【】（）［］｛｝]/g, '') // Remove known punctuators
-            .replace(/^\-+/, '') // Remove leading -
-            .replace(/\-+$/, '') // Remove trailing -
+            .replace(/\s+/g, '-') // espaços viram -
+            .replace(/[\]\[\!\'\#\$\%\&\(\)\*\+\,\.\/\:\;\<\=\>\?\@\\\^\_\{\|\}\~\`。，、；：？！…—·ˉ¨‘’“”々～‖∶＂＇｀｜〃〔〕〈〉《》「」『』．〖〗【】（）［］｛｝]/g, '') // remove pontuação
+            .replace(/^\-+/, '') // remove - iniciais
+            .replace(/\-+$/, '') // remove - finais
     );
-    return stg;
   } catch (error) {
     showErrorMessage('Slug()', error);
   }
 }
 
 /**
- * Gera HTML a partir do conteúdo convertido de Markdown
- * @param {string} data - HTML do corpo (conteúdo convertido)
+ * Gera HTML final com estilo e template a partir do corpo em HTML
+ * @param {string} data - HTML convertido do markdown
  * @param {string} filename - Caminho do arquivo markdown original
- * @param {object} options - Configurações adicionais
- * @returns {string} HTML final com estilo, título e script Mermaid
+ * @param {object} [options={}] - Configurações adicionais para estilos, Mermaid, etc
+ * @returns {string} HTML completo para exportação
  */
 function makeHtml(data, filename, options = {}) {
   try {
-    // lê os estilos
     let style = '';
     style += readStyles(filename, options.stylesheetPaths);
 
-    // título = nome do arquivo sem extensão
     const title = path.basename(filename);
 
-    // carrega template HTML
     const templatePath = path.join(__dirname, 'template', 'template.html');
     const template = readFile(templatePath);
 
-    // script do Mermaid (se houver)
     const mermaidServer = options.mermaidServer || '';
     const mermaid = mermaidServer
       ? `<script src="${mermaidServer}"></script>`
       : '';
 
-    // preenche template com Mustache
     const view = {
-      title: title,
-      style: style,
+      title,
+      style,
       content: data,
-      mermaid: mermaid
+      mermaid
     };
 
     return mustache.render(template, view);
+
   } catch (error) {
-    console.error('makeHtml()', error);
+    console.error('makeHtml() error:', error);
     return '';
   }
 }
 
-/*
- * export a html to a html file
+/**
+ * Exporta conteúdo HTML para arquivo
+ * @param {string} data - Conteúdo HTML
+ * @param {string} filename - Caminho do arquivo de saída
  */
 function exportHtml(data, filename) {
   fs.writeFile(filename, data, 'utf-8', function (error) {
@@ -234,8 +227,12 @@ function exportHtml(data, filename) {
   });
 }
 
-/*
- * export a html to a pdf file (html-pdf)
+/**
+ * Exporta HTML para PDF, PNG, JPEG ou HTML usando Puppeteer
+ * @param {string} data - HTML a ser exportado
+ * @param {string} filename - Caminho do arquivo de saída
+ * @param {string} type - Tipo do arquivo: 'html', 'pdf', 'png', 'jpeg'
+ * @param {object} [options={}] - Opções adicionais para puppeteer e exportação
  */
 async function exportPdf(data, filename, type, options = {}) {
   try {
@@ -342,11 +339,9 @@ async function exportPdf(data, filename, type, options = {}) {
 }
 
 /**
- * Transform the text of the header or footer template, replacing the following supported placeholders:
- *
- * - `%%ISO-DATETIME%%` – For an ISO-based date and time format: `YYYY-MM-DD hh:mm:ss`
- * - `%%ISO-DATE%%` – For an ISO-based date format: `YYYY-MM-DD`
- * - `%%ISO-TIME%%` – For an ISO-based time format: `hh:mm:ss`
+ * Substitui placeholders de data e hora no template do header/footer
+ * @param {string} templateText - Template contendo placeholders
+ * @returns {string} Template com placeholders substituídos
  */
 function transformTemplate(templateText) {
   if (templateText.indexOf('%%ISO-DATETIME%%') !== -1) {
@@ -358,10 +353,14 @@ function transformTemplate(templateText) {
   if (templateText.indexOf('%%ISO-TIME%%') !== -1) {
     templateText = templateText.replace('%%ISO-TIME%%', new Date().toISOString().substr(11, 8));
   }
-
   return templateText;
 }
 
+/**
+ * Verifica se o caminho existe no sistema de arquivos
+ * @param {string} path - Caminho a ser verificado
+ * @returns {boolean} true se o caminho existe, false caso contrário
+ */
 function isExistsPath(path) {
   if (path.length === 0) {
     return false;
@@ -375,6 +374,11 @@ function isExistsPath(path) {
   }
 }
 
+/**
+ * Verifica se o diretório existe no sistema de arquivos
+ * @param {string} dirname - Diretório a ser verificado
+ * @returns {boolean} true se for diretório e existir, false caso contrário
+ */
 function isExistsDir(dirname) {
   if (dirname.length === 0) {
     return false;
@@ -383,7 +387,7 @@ function isExistsDir(dirname) {
     if (fs.statSync(dirname).isDirectory()) {
       return true;
     } else {
-      console.warn('Directory does not exist!') ;
+      console.warn('Directory does not exist!');
       return false;
     }
   } catch (error) {
@@ -392,17 +396,19 @@ function isExistsDir(dirname) {
   }
 }
 
-function readFile(filename, encode) {
+/**
+ * Lê arquivo texto de forma síncrona
+ * @param {string} filename - Caminho do arquivo
+ * @param {string} [encode='utf-8'] - Codificação do arquivo
+ * @returns {string} Conteúdo do arquivo ou string vazia se não existir
+ */
+function readFile(filename, encode = 'utf-8') {
   if (filename.length === 0) {
     return '';
   }
-  if (!encode && encode !== null) {
-    encode = 'utf-8';
-  }
   if (filename.indexOf('file://') === 0) {
     if (process.platform === 'win32') {
-      filename = filename.replace(/^file:\/\/\//, '')
-                 .replace(/^file:\/\//, '');
+      filename = filename.replace(/^file:\/\/\//, '').replace(/^file:\/\//, '');
     } else {
       filename = filename.replace(/^file:\/\//, '');
     }
@@ -414,20 +420,23 @@ function readFile(filename, encode) {
   }
 }
 
+/**
+ * Converte caminho da imagem para URL adequada
+ * @param {string} src - Caminho original da imagem
+ * @param {string} filename - Caminho do arquivo markdown para resolver relativo
+ * @returns {string} Caminho convertido para uso na página HTML
+ */
 function convertImgPath(src, filename) {
   try {
     var href = decodeURIComponent(src);
-    href = href.replace(/("|')/g, '')
-          .replace(/\\/g, '/')
-          .replace(/#/g, '%23');
+    href = href.replace(/("|')/g, '').replace(/\\/g, '/').replace(/#/g, '%23');
     var protocol = url.parse(href).protocol;
-    if (protocol === 'file:' && href.indexOf('file:///') !==0) {
+    if (protocol === 'file:' && href.indexOf('file:///') !== 0) {
       return href.replace(/^file:\/\//, 'file:///');
     } else if (protocol === 'file:') {
       return href;
     } else if (!protocol || path.isAbsolute(href)) {
-      href = path.resolve(path.dirname(filename), href).replace(/\\/g, '/')
-                                                      .replace(/#/g, '%23');
+      href = path.resolve(path.dirname(filename), href).replace(/\\/g, '/').replace(/#/g, '%23');
       if (href.indexOf('//') === 0) {
         return 'file:' + href;
       } else if (href.indexOf('/') === 0) {
@@ -443,6 +452,11 @@ function convertImgPath(src, filename) {
   }
 }
 
+/**
+ * Lê conteúdo CSS e o envolve em tag <style>
+ * @param {string} filename - Caminho do arquivo CSS
+ * @returns {string} CSS formatado para inclusão no HTML ou string vazia
+ */
 function makeCss(filename) {
   try {
     var css = readFile(filename);
@@ -459,7 +473,12 @@ function makeCss(filename) {
 /**
  * Lê e concatena estilos CSS para o HTML final
  * @param {string} basePath - Caminho base para resolver estilos relativos
- * @param {object} config - Configurações equivalentes às do vscode.workspace.getConfiguration
+ * @param {object} config - Configurações com propriedades:
+ *  - includeDefaultStyles {boolean}
+ *  - markdownStyles {array<string>}
+ *  - highlight {boolean}
+ *  - highlightStyle {string}
+ *  - markdownPdfStyles {array<string>}
  * @returns {string} HTML contendo <style> e <link> para estilos
  */
 function readStyles(basePath, config = {}) {
@@ -523,7 +542,7 @@ function readStyles(basePath, config = {}) {
 
 /**
  * Resolve href para uma URI adequada (file:// ou URL http/https)
- * @param {string} basePath - caminho base para resolver paths relativos (ex: arquivo markdown)
+ * @param {string} basePath - caminho base para resolver paths relativos (ex: diretório do arquivo markdown)
  * @param {string} href - href a ser resolvido (pode ser URL, path absoluto ou relativo)
  * @returns {string} href absoluto como URL (file:// ou http://)
  */
@@ -559,6 +578,11 @@ function fixHref(basePath, href) {
   }
 }
 
+/**
+ * Exibe mensagem de erro padronizada
+ * @param {string} msg - Mensagem de contexto
+ * @param {Error} error - Objeto Error
+ */
 function showErrorMessage(msg, error) {
   console.error('ERROR: ' + msg);
   if (error) {
@@ -566,6 +590,12 @@ function showErrorMessage(msg, error) {
   }
 }
 
+/**
+ * Define valor booleano considerando valor prioritário
+ * @param {any} a - Valor primário (normalmente do front matter)
+ * @param {any} b - Valor secundário (opcional, default)
+ * @returns {boolean} Valor booleano resultante
+ */
 function setBooleanValue(a, b) {
-  return a === false ? false : a || b;
+  return a === false ? false : Boolean(a || b);
 }
