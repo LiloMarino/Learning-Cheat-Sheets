@@ -295,10 +295,10 @@ async function exportPdf(data, filename, type, options = {}) {
         width: options.width || undefined,
         height: options.height || undefined,
         margin: {
-          top: options.margin?.top || '0',
-          right: options.margin?.right || '0',
-          bottom: options.margin?.bottom || '0',
-          left: options.margin?.left || '0'
+          top: options.margin?.top || '1.5cm',
+          right: options.margin?.right || '1cm',
+          bottom: options.margin?.bottom || '1cm',
+          left: options.margin?.left || '1cm'
         },
         timeout: 0,
       };
