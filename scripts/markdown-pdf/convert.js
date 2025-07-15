@@ -1,53 +1,61 @@
-const fs = require('fs');
+#!/usr/bin/env node
+
 const path = require('path');
-const markdownIt = require('markdown-it');
-const mustache = require('mustache');
-const puppeteer = require('puppeteer');
+const fs = require('fs');
+const { markdownPdfStandalone } = require('./extension');
 
-const md = markdownIt({ html: true });
+// Parser básico de argumentos
+const args = process.argv.slice(2);
+if (args.length === 0 || args.includes('--help')) {
+  console.log(`
+Usage: node convert.js <input.md> [type] [options]
 
-// Caminhos fixos
-const cheatsheetDir = path.resolve(__dirname, '../../cheatsheets');
-const outputDir = path.resolve(__dirname, '../../cheatsheets/output');
-const templatePath = path.resolve(__dirname, 'template/template.html');
+Arguments:
+  <input.md>        Caminho para o arquivo Markdown
+  [type]            Tipo de saída (pdf, html, png, jpeg, all). Default: pdf
 
-// Garante que a pasta de saída exista
-fs.mkdirSync(outputDir, { recursive: true });
-
-// Carrega template base
-const templateHtml = fs.readFileSync(templatePath, 'utf8');
-
-// Função principal de conversão
-async function convertAll() {
-  const files = fs.readdirSync(cheatsheetDir).filter(file => file.endsWith('.md'));
-
-  for (const file of files) {
-    const mdPath = path.join(cheatsheetDir, file);
-    const baseName = path.basename(file, '.md');
-    const outputHtmlPath = path.join(outputDir, baseName + '.html');
-    const outputPdfPath = path.join(outputDir, baseName + '.pdf');
-
-    const markdownContent = fs.readFileSync(mdPath, 'utf8');
-    const htmlContent = md.render(markdownContent);
-
-    const finalHtml = mustache.render(templateHtml, {
-      title: baseName,
-      content: htmlContent,
-      style: '', // insira CSS inline aqui se quiser
-      mermaid: '', // ou insira o script do mermaid aqui se necessário
-    });
-
-    fs.writeFileSync(outputHtmlPath, finalHtml, 'utf8');
-    console.log(`✅ HTML gerado: ${outputHtmlPath}`);
-
-    const browser = await puppeteer.launch();
-    const page = await browser.newPage();
-    await page.setContent(finalHtml, { waitUntil: 'networkidle0' });
-    await page.pdf({ path: outputPdfPath, format: 'A4', printBackground: true });
-    await browser.close();
-
-    console.log(`📄 PDF gerado: ${outputPdfPath}`);
-  }
+Options (via flags):
+  --emoji           Ativa suporte a emojis
+  --breaks          Ativa quebra de linha como <br>
+  --plantuml        Ativa suporte ao PlantUML
+  --outdir=DIR      Diretório de saída
+  --css=FILE        Caminho do CSS personalizado
+  --chrome=PATH     Caminho do executável do Chrome/Chromium
+`);
+  process.exit(0);
 }
 
-convertAll().catch(console.error);
+const inputPath = path.resolve(args[0]);
+const type = args[1] || 'pdf';
+
+const options = {
+  emoji: args.includes('--emoji'),
+  breaks: args.includes('--breaks'),
+  enablePlantUML: args.includes('--plantuml'),
+  enableInclude: true, // sempre ligado
+  outputDirectory: '',  // default atual, pode ser substituído abaixo
+  stylesheetPaths: [],
+  executablePath: ''
+};
+
+// Parse de opções com valores
+args.forEach(arg => {
+  if (arg.startsWith('--outdir=')) {
+    options.outputDirectory = arg.split('=')[1];
+  }
+  if (arg.startsWith('--css=')) {
+    options.stylesheetPaths.push(arg.split('=')[1]);
+  }
+  if (arg.startsWith('--chrome=')) {
+    options.executablePath = arg.split('=')[1];
+  }
+});
+
+(async () => {
+  if (!fs.existsSync(inputPath)) {
+    console.error('Arquivo não encontrado:', inputPath);
+    process.exit(1);
+  }
+
+  await markdownPdfStandalone(inputPath, type, options);
+})();

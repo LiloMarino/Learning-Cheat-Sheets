@@ -11,7 +11,7 @@ const markdownIt = require('markdown-it');
 var INSTALL_CHECK = false;
 
 
-async function markdownPdfStandalone(inputPath, option_type = 'pdf') {
+export async function markdownPdfStandalone(inputPath, option_type = 'pdf') {
   try {
     const types_format = ['html', 'pdf', 'png', 'jpeg'];
     let types = [];
