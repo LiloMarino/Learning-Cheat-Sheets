@@ -6,33 +6,6 @@ var url = require('url');
 var os = require('os');
 var INSTALL_CHECK = false;
 
-function activate(context) {
-  init();
-
-  var commands = [
-    vscode.commands.registerCommand('extension.markdown-pdf.settings', async function () { await markdownPdf('settings'); }),
-    vscode.commands.registerCommand('extension.markdown-pdf.pdf', async function () { await markdownPdf('pdf'); }),
-    vscode.commands.registerCommand('extension.markdown-pdf.html', async function () { await markdownPdf('html'); }),
-    vscode.commands.registerCommand('extension.markdown-pdf.png', async function () { await markdownPdf('png'); }),
-    vscode.commands.registerCommand('extension.markdown-pdf.jpeg', async function () { await markdownPdf('jpeg'); }),
-    vscode.commands.registerCommand('extension.markdown-pdf.all', async function () { await markdownPdf('all'); })
-  ];
-  commands.forEach(function (command) {
-    context.subscriptions.push(command);
-  });
-
-  var isConvertOnSave = vscode.workspace.getConfiguration('markdown-pdf')['convertOnSave'];
-  if (isConvertOnSave) {
-    var disposable_onsave = vscode.workspace.onDidSaveTextDocument(function () { markdownPdfOnSave(); });
-    context.subscriptions.push(disposable_onsave);
-  }
-}
-exports.activate = activate;
-
-// this method is called when your extension is deactivated
-function deactivate() {
-}
-exports.deactivate = deactivate;
 
 async function markdownPdf(option_type) {
 
@@ -107,42 +80,7 @@ async function markdownPdf(option_type) {
   }
 }
 
-function markdownPdfOnSave() {
-  try {
-    var editor = vscode.window.activeTextEditor;
-    var mode = editor.document.languageId;
-    if (mode != 'markdown') {
-      return;
-    }
-    if (!isMarkdownPdfOnSaveExclude()) {
-      markdownPdf('settings');
-    }
-  } catch (error) {
-    showErrorMessage('markdownPdfOnSave()', error);
-  }
-}
 
-function isMarkdownPdfOnSaveExclude() {
-  try{
-    var editor = vscode.window.activeTextEditor;
-    var filename = path.basename(editor.document.fileName);
-    var patterns = vscode.workspace.getConfiguration('markdown-pdf')['convertOnSaveExclude'] || '';
-    var pattern;
-    var i;
-    if (patterns && Array.isArray(patterns) && patterns.length > 0) {
-      for (i = 0; i < patterns.length; i++) {
-        pattern = patterns[i];
-        var re = new RegExp(pattern);
-        if (re.test(filename)) {
-          return true;
-        }
-      }
-    }
-    return false;
-  } catch (error) {
-    showErrorMessage('isMarkdownPdfOnSaveExclude()', error);
-  }
-}
 
 /*
  * convert markdown to html (markdown-it)
@@ -807,76 +745,10 @@ function checkPuppeteerBinary() {
   }
 }
 
-/*
- * puppeteer install.js
- * https://github.com/GoogleChrome/puppeteer/blob/master/install.js
- */
-function installChromium() {
-  try {
-    vscode.window.showInformationMessage('[Markdown PDF] Installing Chromium ...');
-    var statusbarmessage = vscode.window.setStatusBarMessage('$(markdown) Installing Chromium ...');
-
-    // proxy setting
-    setProxy();
-
-    var StatusbarMessageTimeout = vscode.workspace.getConfiguration('markdown-pdf')['StatusbarMessageTimeout'];
-    const puppeteer = require('puppeteer-core');
-    const browserFetcher = puppeteer.createBrowserFetcher();
-    const revision = require(path.join(__dirname, 'node_modules', 'puppeteer-core', 'package.json')).puppeteer.chromium_revision;
-    const revisionInfo = browserFetcher.revisionInfo(revision);
-
-    // download Chromium
-    browserFetcher.download(revisionInfo.revision, onProgress)
-      .then(() => browserFetcher.localRevisions())
-      .then(onSuccess)
-      .catch(onError);
-
-    function onSuccess(localRevisions) {
-      console.log('Chromium downloaded to ' + revisionInfo.folderPath);
-      localRevisions = localRevisions.filter(revision => revision !== revisionInfo.revision);
-      // Remove previous chromium revisions.
-      const cleanupOldVersions = localRevisions.map(revision => browserFetcher.remove(revision));
-
-      if (checkPuppeteerBinary()) {
-        INSTALL_CHECK = true;
-        statusbarmessage.dispose();
-        vscode.window.setStatusBarMessage('$(markdown) Chromium installation succeeded!', StatusbarMessageTimeout);
-        vscode.window.showInformationMessage('[Markdown PDF] Chromium installation succeeded.');
-        return Promise.all(cleanupOldVersions);
-      }
-    }
-
-    function onError(error) {
-      statusbarmessage.dispose();
-      vscode.window.setStatusBarMessage('$(markdown) ERROR: Failed to download Chromium!', StatusbarMessageTimeout);
-      showErrorMessage('Failed to download Chromium! \
-        If you are behind a proxy, set the http.proxy option to settings.json and restart Visual Studio Code. \
-        See https://github.com/yzane/vscode-markdown-pdf#install', error);
-    }
-
-    function onProgress(downloadedBytes, totalBytes) {
-      var progress = parseInt(downloadedBytes / totalBytes * 100);
-      vscode.window.setStatusBarMessage('$(markdown) Installing Chromium ' + progress + '%' , StatusbarMessageTimeout);
-    }
-  } catch (error) {
-    showErrorMessage('installChromium()', error);
-  }
-}
-
 function showErrorMessage(msg, error) {
-  vscode.window.showErrorMessage('ERROR: ' + msg);
   console.log('ERROR: ' + msg);
   if (error) {
-    vscode.window.showErrorMessage(error.toString());
     console.log(error);
-  }
-}
-
-function setProxy() {
-  var https_proxy = vscode.workspace.getConfiguration('http')['proxy'] || '';
-  if (https_proxy) {
-    process.env.HTTPS_PROXY = https_proxy;
-    process.env.HTTP_PROXY = https_proxy;
   }
 }
 
@@ -885,17 +757,5 @@ function setBooleanValue(a, b) {
     return false
   } else {
     return a || b
-  }
-}
-
-function init() {
-  try {
-    if (checkPuppeteerBinary()) {
-      INSTALL_CHECK = true;
-    } else {
-      installChromium();
-    }
-  } catch (error) {
-    showErrorMessage('init()', error);
   }
 }
