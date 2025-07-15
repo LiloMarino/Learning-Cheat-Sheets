@@ -7,76 +7,34 @@ var os = require('os');
 var INSTALL_CHECK = false;
 
 
-async function markdownPdf(option_type) {
-
+async function markdownPdfStandalone(inputPath, option_type = 'pdf') {
   try {
+    const types_format = ['html', 'pdf', 'png', 'jpeg'];
+    let types = [];
 
-    // check active window
-    var editor = vscode.window.activeTextEditor;
-    if (!editor) {
-      vscode.window.showWarningMessage('No active Editor!');
-      return;
-    }
-
-    // check markdown mode
-    var mode = editor.document.languageId;
-    if (mode != 'markdown') {
-      vscode.window.showWarningMessage('It is not a markdown mode!');
-      return;
-    }
-
-    var uri = editor.document.uri;
-    var mdfilename = uri.fsPath;
-    var ext = path.extname(mdfilename);
-    if (!isExistsPath(mdfilename)) {
-      if (editor.document.isUntitled) {
-        vscode.window.showWarningMessage('Please save the file!');
-        return;
-      }
-      vscode.window.showWarningMessage('File name does not get!');
-      return;
-    }
-
-    var types_format = ['html', 'pdf', 'png', 'jpeg'];
-    var filename = '';
-    var types = [];
-    if (types_format.indexOf(option_type) >= 0) {
-      types[0] = option_type;
-    } else if (option_type === 'settings') {
-      var types_tmp = vscode.workspace.getConfiguration('markdown-pdf')['type'] || 'pdf';
-      if (types_tmp && !Array.isArray(types_tmp)) {
-          types[0] = types_tmp;
-      } else {
-        types = vscode.workspace.getConfiguration('markdown-pdf')['type'] || 'pdf';
-      }
+    if (types_format.includes(option_type)) {
+      types = [option_type];
     } else if (option_type === 'all') {
       types = types_format;
     } else {
-      showErrorMessage('markdownPdf().1 Supported formats: html, pdf, png, jpeg.');
+      console.error('Supported formats: html, pdf, png, jpeg.');
       return;
     }
 
-    // convert and export markdown to pdf, html, png, jpeg
-    if (types && Array.isArray(types) && types.length > 0) {
-      for (var i = 0; i < types.length; i++) {
-        var type = types[i];
-        if (types_format.indexOf(type) >= 0) {
-          filename = mdfilename.replace(ext, '.' + type);
-          var text = editor.document.getText();
-          var content = convertMarkdownToHtml(mdfilename, type, text);
-          var html = makeHtml(content, uri);
-          await exportPdf(html, filename, type, uri);
-        } else {
-          showErrorMessage('markdownPdf().2 Supported formats: html, pdf, png, jpeg.');
-          return;
-        }
-      }
-    } else {
-      showErrorMessage('markdownPdf().3 Supported formats: html, pdf, png, jpeg.');
-      return;
+    const ext = path.extname(inputPath);
+    const text = fs.readFileSync(inputPath, 'utf-8');
+    const uri = { fsPath: inputPath }; // mock para compatibilidade de chamada
+
+    for (const type of types) {
+      const filename = inputPath.replace(ext, '.' + type);
+      const content = convertMarkdownToHtml(inputPath, type, text);
+      const html = makeHtml(content, uri);
+      await exportPdf(html, filename, type, uri); // você vai adaptar exportPdf depois
+      console.log(`Exported to ${filename}`);
     }
+
   } catch (error) {
-    showErrorMessage('markdownPdf()', error);
+    console.error('markdownPdfStandalone() error:', error);
   }
 }
 
@@ -746,9 +704,9 @@ function checkPuppeteerBinary() {
 }
 
 function showErrorMessage(msg, error) {
-  console.log('ERROR: ' + msg);
+  console.error('ERROR: ' + msg);
   if (error) {
-    console.log(error);
+    console.error(error);
   }
 }
 
