@@ -1,9 +1,12 @@
 'use strict';
-var vscode = require('vscode');
 var path = require('path');
 var fs = require('fs');
 var url = require('url');
 var os = require('os');
+const grayMatter = require('gray-matter');
+const highlight = require('highlight.js');
+const cheerio = require('cheerio');
+const markdownIt = require('markdown-it');
 var INSTALL_CHECK = false;
 
 
@@ -27,7 +30,13 @@ async function markdownPdfStandalone(inputPath, option_type = 'pdf') {
 
     for (const type of types) {
       const filename = inputPath.replace(ext, '.' + type);
-      const content = convertMarkdownToHtml(inputPath, type, text);
+      const content = convertMarkdownToHtml(inputPath, type, markdownString, {
+        breaks: true,
+        emoji: true,
+        enablePlantUML: true,
+        plantumlServer: 'https://www.plantuml.com/plantuml',
+        enableInclude: true
+      });
       const html = makeHtml(content, uri);
       await exportPdf(html, filename, type, uri); // você vai adaptar exportPdf depois
       console.log(`Exported to ${filename}`);
@@ -43,151 +52,111 @@ async function markdownPdfStandalone(inputPath, option_type = 'pdf') {
 /*
  * convert markdown to html (markdown-it)
  */
-function convertMarkdownToHtml(filename, type, text) {
-  var grayMatter = require("gray-matter");
-  var matterParts = grayMatter(text);
-
+function convertMarkdownToHtml(filename, type, text, options = {}) {
   try {
-    try {
-      var statusbarmessage = vscode.window.setStatusBarMessage('$(markdown) Converting (convertMarkdownToHtml) ...');
-      var hljs = require('highlight.js');
-      var breaks = setBooleanValue(matterParts.data.breaks, vscode.workspace.getConfiguration('markdown-pdf')['breaks']);
-      var md = require('markdown-it')({
-        html: true,
-        breaks: breaks,
-        highlight: function (str, lang) {
+    const matterParts = grayMatter(text);
 
-          if (lang && lang.match(/\bmermaid\b/i)) {
-            return `<div class="mermaid">${str}</div>`;
-          }
+    const breaks = setBooleanValue(
+      matterParts.data.breaks,
+      options.breaks ?? false
+    );
 
-          if (lang && hljs.getLanguage(lang)) {
-            try {
-              str = hljs.highlight(lang, str, true).value;
-            } catch (error) {
-              str = md.utils.escapeHtml(str);
-
-              showErrorMessage('markdown-it:highlight', error);
-            }
-          } else {
-            str = md.utils.escapeHtml(str);
-          }
-          return '<pre class="hljs"><code><div>' + str + '</div></code></pre>';
+    const md = markdownIt({
+      html: true,
+      breaks: breaks,
+      highlight: function (str, lang) {
+        if (lang && lang.match(/\bmermaid\b/i)) {
+          return `<div class="mermaid">${str}</div>`;
         }
-      });
-    } catch (error) {
-      statusbarmessage.dispose();
-      showErrorMessage('require(\'markdown-it\')', error);
-    }
 
-  // convert the img src of the markdown
-  var cheerio = require('cheerio');
-  var defaultRender = md.renderer.rules.image;
-  md.renderer.rules.image = function (tokens, idx, options, env, self) {
-    var token = tokens[idx];
-    var href = token.attrs[token.attrIndex('src')][1];
-    // console.log("original href: " + href);
-    if (type === 'html') {
-      href = decodeURIComponent(href).replace(/("|')/g, '');
-    } else {
-      href = convertImgPath(href, filename);
-    }
-    // console.log("converted href: " + href);
-    token.attrs[token.attrIndex('src')][1] = href;
-    // // pass token to default renderer.
-    return defaultRender(tokens, idx, options, env, self);
-  };
-
-  if (type !== 'html') {
-    // convert the img src of the html
-    md.renderer.rules.html_block = function (tokens, idx) {
-      var html = tokens[idx].content;
-      var $ = cheerio.load(html);
-      $('img').each(function () {
-        var src = $(this).attr('src');
-        var href = convertImgPath(src, filename);
-        $(this).attr('src', href);
-      });
-      return $.html();
-    };
-  }
-
-  // checkbox
-  md.use(require('markdown-it-checkbox'));
-
-  // emoji
-  var emoji_f = setBooleanValue(matterParts.data.emoji, vscode.workspace.getConfiguration('markdown-pdf')['emoji']);
-  if (emoji_f) {
-    var emojies_defs = require(path.join(__dirname, 'data', 'emoji.json'));
-    try {
-      var options = {
-        defs: emojies_defs
-      };
-    } catch (error) {
-      statusbarmessage.dispose();
-      showErrorMessage('markdown-it-emoji:options', error);
-    }
-    md.use(require('markdown-it-emoji'), options);
-    md.renderer.rules.emoji = function (token, idx) {
-      var emoji = token[idx].markup;
-      var emojipath = path.join(__dirname, 'node_modules', 'emoji-images', 'pngs', emoji + '.png');
-      var emojidata = readFile(emojipath, null).toString('base64');
-      if (emojidata) {
-        return '<img class="emoji" alt="' + emoji + '" src="data:image/png;base64,' + emojidata + '" />';
-      } else {
-        return ':' + emoji + ':';
+        if (lang && highlight.getLanguage(lang)) {
+          try {
+            return `<pre class="hljs"><code><div>${highlight.highlight(lang, str, true).value}</div></code></pre>`;
+          } catch (err) {
+            return `<pre class="hljs"><code>${md.utils.escapeHtml(str)}</code></pre>`;
+          }
+        }
+        return `<pre class="hljs"><code>${md.utils.escapeHtml(str)}</code></pre>`;
       }
-    };
-  }
-
-  // toc
-  // https://github.com/leff/markdown-it-named-headers
-  var options = {
-    slugify: Slug
-  }
-  md.use(require('markdown-it-named-headers'), options);
-
-  // markdown-it-container
-  // https://github.com/markdown-it/markdown-it-container
-  md.use(require('markdown-it-container'), '', {
-    validate: function (name) {
-      return name.trim().length;
-    },
-    render: function (tokens, idx) {
-      if (tokens[idx].info.trim() !== '') {
-        return `<div class="${tokens[idx].info.trim()}">\n`;
-      } else {
-        return `</div>\n`;
-      }
-    }
-  });
-
-  // PlantUML
-  // https://github.com/gmunguia/markdown-it-plantuml
-  var plantumlOptions = {
-    openMarker: matterParts.data.plantumlOpenMarker || vscode.workspace.getConfiguration('markdown-pdf')['plantumlOpenMarker'] || '@startuml',
-    closeMarker: matterParts.data.plantumlCloseMarker || vscode.workspace.getConfiguration('markdown-pdf')['plantumlCloseMarker'] || '@enduml',
-    server: vscode.workspace.getConfiguration('markdown-pdf')['plantumlServer'] || ''
-  }
-  md.use(require('markdown-it-plantuml'), plantumlOptions);
-
-  // markdown-it-include
-  // https://github.com/camelaissani/markdown-it-include
-  // the syntax is :[alt-text](relative-path-to-file.md)
-  // https://talk.commonmark.org/t/transclusion-or-including-sub-documents-for-reuse/270/13
-  if (vscode.workspace.getConfiguration('markdown-pdf')['markdown-it-include']['enable']) {
-    md.use(require("markdown-it-include"), {
-      root: path.dirname(filename),
-      includeRe: /:\[.+\]\((.+\..+)\)/i
     });
-  }
 
-  statusbarmessage.dispose();
-  return md.render(matterParts.content);
+    // imagem
+    const defaultRender = md.renderer.rules.image;
+    md.renderer.rules.image = function (tokens, idx, opts, env, self) {
+      let token = tokens[idx];
+      let href = token.attrs[token.attrIndex('src')][1];
+      href = type === 'html'
+        ? decodeURIComponent(href).replace(/("|')/g, '')
+        : convertImgPath(href, filename);
+      token.attrs[token.attrIndex('src')][1] = href;
+      return defaultRender(tokens, idx, opts, env, self);
+    };
 
+    if (type !== 'html') {
+      md.renderer.rules.html_block = function (tokens, idx) {
+        const $ = cheerio.load(tokens[idx].content);
+        $('img').each(function () {
+          const src = $(this).attr('src');
+          $(this).attr('src', convertImgPath(src, filename));
+        });
+        return $.html();
+      };
+    }
+
+    // checkbox
+    md.use(require('markdown-it-checkbox'));
+
+    // emoji
+    const enableEmoji = setBooleanValue(
+      matterParts.data.emoji,
+      options.emoji ?? false
+    );
+    if (enableEmoji) {
+      const emojiDefs = require(path.join(__dirname, 'data', 'emoji.json'));
+      md.use(require('markdown-it-emoji'), { defs: emojiDefs });
+      md.renderer.rules.emoji = function (token, idx) {
+        const emoji = token[idx].markup;
+        const emojiPath = path.join(__dirname, 'node_modules', 'emoji-images', 'pngs', emoji + '.png');
+        if (!fs.existsSync(emojiPath)) return ':' + emoji + ':';
+        const base64 = fs.readFileSync(emojiPath).toString('base64');
+        return `<img class="emoji" alt="${emoji}" src="data:image/png;base64,${base64}" />`;
+      };
+    }
+
+    // named headers
+    md.use(require('markdown-it-named-headers'), { slugify: Slug });
+
+    // container
+    md.use(require('markdown-it-container'), '', {
+      validate: name => name.trim().length,
+      render: (tokens, idx) => {
+        return tokens[idx].info.trim()
+          ? `<div class="${tokens[idx].info.trim()}">\n`
+          : `</div>\n`;
+      }
+    });
+
+    // PlantUML
+    if (options.enablePlantUML) {
+      md.use(require('markdown-it-plantuml'), {
+        openMarker: matterParts.data.plantumlOpenMarker || options.plantumlOpenMarker || '@startuml',
+        closeMarker: matterParts.data.plantumlCloseMarker || options.plantumlCloseMarker || '@enduml',
+        server: options.plantumlServer || ''
+      });
+    }
+
+    // include files
+    if (options.enableInclude) {
+      md.use(require('markdown-it-include'), {
+        root: path.dirname(filename),
+        includeRe: /:\[.+\]\((.+\..+)\)/i
+      });
+    }
+
+    return md.render(matterParts.content);
   } catch (error) {
-    statusbarmessage.dispose();
-    showErrorMessage('convertMarkdownToHtml()', error);
+    console.error('convertMarkdownToHtml()', error);
+    return '';
   }
 }
 
@@ -711,9 +680,5 @@ function showErrorMessage(msg, error) {
 }
 
 function setBooleanValue(a, b) {
-  if (a === false) {
-    return false
-  } else {
-    return a || b
-  }
+  return a === false ? false : a || b;
 }
