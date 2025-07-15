@@ -8,7 +8,8 @@ const grayMatter = require('gray-matter');
 const highlight = require('highlight.js');
 const cheerio = require('cheerio');
 const markdownIt = require('markdown-it');
-var INSTALL_CHECK = false;
+const puppeteer = require('puppeteer-core');
+
 
 
 export async function markdownPdfStandalone(inputPath, option_type = 'pdf') {
@@ -236,146 +237,108 @@ function exportHtml(data, filename) {
 /*
  * export a html to a pdf file (html-pdf)
  */
-function exportPdf(data, filename, type, uri) {
+async function exportPdf(data, filename, type, options = {}) {
+  try {
+    // Verifica se o executável do Chrome/Chromium foi informado ou usa o padrão do puppeteer
+    const executablePath = options.executablePath || puppeteer.executablePath();
 
-  if (!INSTALL_CHECK) {
-    return;
-  }
-  if (!checkPuppeteerBinary()) {
-    showErrorMessage('Chromium or Chrome does not exist! \
-      See https://github.com/yzane/vscode-markdown-pdf#install');
-    return;
-  }
+    if (!fs.existsSync(executablePath)) {
+      console.error('Chromium or Chrome executable not found! Configure "executablePath" option.');
+      return;
+    }
 
-  var StatusbarMessageTimeout = vscode.workspace.getConfiguration('markdown-pdf')['StatusbarMessageTimeout'];
-  vscode.window.setStatusBarMessage('');
-  var exportFilename = getOutputDir(filename, uri);
+    // Gera arquivo temporário HTML
+    const tmpFilename = path.join(path.dirname(filename), path.parse(filename).name + '_tmp.html');
+    fs.writeFileSync(tmpFilename, data, 'utf-8');
 
-  return vscode.window.withProgress({
-    location: vscode.ProgressLocation.Notification,
-    title: '[Markdown PDF]: Exporting (' + type + ') ...'
-    }, async () => {
-      try {
-        // export html
-        if (type == 'html') {
-          exportHtml(data, exportFilename);
-          vscode.window.setStatusBarMessage('$(markdown) ' + exportFilename, StatusbarMessageTimeout);
-          return;
-        }
+    // Configura args padrão para Linux Sandbox, pode ser customizado
+    const launchOptions = {
+      executablePath,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    };
 
-        const puppeteer = require('puppeteer-core');
-        // create temporary file
-        var f = path.parse(filename);
-        var tmpfilename = path.join(f.dir, f.name + '_tmp.html');
-        exportHtml(data, tmpfilename);
-        var options = {
-          executablePath: vscode.workspace.getConfiguration('markdown-pdf')['executablePath'] || puppeteer.executablePath(),
-          args: ['--lang='+vscode.env.language, '--no-sandbox', '--disable-setuid-sandbox']
-          // Setting Up Chrome Linux Sandbox
-          // https://github.com/puppeteer/puppeteer/blob/master/docs/troubleshooting.md#setting-up-chrome-linux-sandbox
+    // Inicializa browser Puppeteer
+    const browser = await puppeteer.launch(launchOptions);
+    const page = await browser.newPage();
+    await page.setDefaultTimeout(0);
+
+    // Navega para o arquivo HTML temporário
+    await page.goto('file://' + tmpFilename, { waitUntil: 'networkidle0' });
+
+    if (type === 'html') {
+      // Apenas salva o HTML final no destino
+      fs.writeFileSync(filename, data, 'utf-8');
+      console.log(`Exported HTML to ${filename}`);
+    }
+
+    if (type === 'pdf') {
+      // Configura opções PDF com valores padrão ou opções passadas
+      const pdfOptions = {
+        path: filename,
+        scale: options.scale || 1,
+        displayHeaderFooter: options.displayHeaderFooter || false,
+        headerTemplate: options.headerTemplate ? transformTemplate(options.headerTemplate) : '',
+        footerTemplate: options.footerTemplate ? transformTemplate(options.footerTemplate) : '',
+        printBackground: options.printBackground !== undefined ? options.printBackground : true,
+        landscape: options.orientation === 'landscape',
+        pageRanges: options.pageRanges || '',
+        format: (!options.width && !options.height) ? (options.format || 'A4') : undefined,
+        width: options.width || undefined,
+        height: options.height || undefined,
+        margin: {
+          top: options.margin?.top || '0',
+          right: options.margin?.right || '0',
+          bottom: options.margin?.bottom || '0',
+          left: options.margin?.left || '0'
+        },
+        timeout: 0,
       };
-        const browser = await puppeteer.launch(options);
-        const page = await browser.newPage();
-        await page.setDefaultTimeout(0);
-        await page.goto(vscode.Uri.file(tmpfilename).toString(), { waitUntil: 'networkidle0' });
-        // generate pdf
-        // https://github.com/GoogleChrome/puppeteer/blob/master/docs/api.md#pagepdfoptions
-        if (type == 'pdf') {
-          // If width or height option is set, it overrides the format option.
-          // In order to set the default value of page size to A4, we changed it from the specification of puppeteer.
-          var width_option = vscode.workspace.getConfiguration('markdown-pdf', uri)['width'] || '';
-          var height_option = vscode.workspace.getConfiguration('markdown-pdf', uri)['height'] || '';
-          var format_option = '';
-          if (!width_option && !height_option) {
-            format_option = vscode.workspace.getConfiguration('markdown-pdf', uri)['format'] || 'A4';
-          }
-          var landscape_option;
-          if (vscode.workspace.getConfiguration('markdown-pdf', uri)['orientation'] == 'landscape') {
-            landscape_option = true;
-          } else {
-            landscape_option = false;
-          }
-          var options = {
-            path: exportFilename,
-            scale: vscode.workspace.getConfiguration('markdown-pdf', uri)['scale'],
-            displayHeaderFooter: vscode.workspace.getConfiguration('markdown-pdf', uri)['displayHeaderFooter'],
-            headerTemplate: transformTemplate(vscode.workspace.getConfiguration('markdown-pdf', uri)['headerTemplate'] || ''),
-            footerTemplate: transformTemplate(vscode.workspace.getConfiguration('markdown-pdf', uri)['footerTemplate'] || ''),
-            printBackground: vscode.workspace.getConfiguration('markdown-pdf', uri)['printBackground'],
-            landscape: landscape_option,
-            pageRanges: vscode.workspace.getConfiguration('markdown-pdf', uri)['pageRanges'] || '',
-            format: format_option,
-            width: vscode.workspace.getConfiguration('markdown-pdf', uri)['width'] || '',
-            height: vscode.workspace.getConfiguration('markdown-pdf', uri)['height'] || '',
-            margin: {
-              top: vscode.workspace.getConfiguration('markdown-pdf', uri)['margin']['top'] || '',
-              right: vscode.workspace.getConfiguration('markdown-pdf', uri)['margin']['right'] || '',
-              bottom: vscode.workspace.getConfiguration('markdown-pdf', uri)['margin']['bottom'] || '',
-              left: vscode.workspace.getConfiguration('markdown-pdf', uri)['margin']['left'] || ''
-            },
-            timeout: 0
-          };
-          await page.pdf(options);
-        }
+      await page.pdf(pdfOptions);
+      console.log(`Exported PDF to ${filename}`);
+    }
 
-        // generate png and jpeg
-        // https://github.com/GoogleChrome/puppeteer/blob/master/docs/api.md#pagescreenshotoptions
-        if (type == 'png' || type == 'jpeg') {
-          // Quality options do not apply to PNG images.
-          var quality_option;
-          if (type == 'png') {
-            quality_option = undefined;
-          }
-          if (type == 'jpeg') {
-            quality_option = vscode.workspace.getConfiguration('markdown-pdf')['quality'] || 100;
-          }
+    if (type === 'png' || type === 'jpeg') {
+      // Configura opções de screenshot
+      const screenshotOptions = {
+        path: filename,
+        quality: type === 'jpeg' ? (options.quality || 100) : undefined,
+        fullPage: true,
+        omitBackground: options.omitBackground || false,
+        type: type,
+      };
 
-          // screenshot size
-          var clip_x_option = vscode.workspace.getConfiguration('markdown-pdf')['clip']['x'] || null;
-          var clip_y_option = vscode.workspace.getConfiguration('markdown-pdf')['clip']['y'] || null;
-          var clip_width_option = vscode.workspace.getConfiguration('markdown-pdf')['clip']['width'] || null;
-          var clip_height_option = vscode.workspace.getConfiguration('markdown-pdf')['clip']['height'] || null;
-          var options;
-          if (clip_x_option !== null && clip_y_option !== null && clip_width_option !== null && clip_height_option !== null) {
-            options = {
-              path: exportFilename,
-              quality: quality_option,
-              fullPage: false,
-              clip: {
-                x: clip_x_option,
-                y: clip_y_option,
-                width: clip_width_option,
-                height: clip_height_option,
-              },
-              omitBackground: vscode.workspace.getConfiguration('markdown-pdf')['omitBackground'],
-            }
-          } else {
-            options = {
-              path: exportFilename,
-              quality: quality_option,
-              fullPage: true,
-              omitBackground: vscode.workspace.getConfiguration('markdown-pdf')['omitBackground'],
-            }
-          }
-          await page.screenshot(options);
-        }
-
-        await browser.close();
-
-        // delete temporary file
-        var debug = vscode.workspace.getConfiguration('markdown-pdf')['debug'] || false;
-        if (!debug) {
-          if (isExistsPath(tmpfilename)) {
-            deleteFile(tmpfilename);
-          }
-        }
-
-        vscode.window.setStatusBarMessage('$(markdown) ' + exportFilename, StatusbarMessageTimeout);
-      } catch (error) {
-        showErrorMessage('exportPdf()', error);
+      // Se definir clip, usa clip e desativa fullPage
+      if (
+        options.clip &&
+        options.clip.x !== undefined &&
+        options.clip.y !== undefined &&
+        options.clip.width !== undefined &&
+        options.clip.height !== undefined
+      ) {
+        screenshotOptions.clip = {
+          x: options.clip.x,
+          y: options.clip.y,
+          width: options.clip.width,
+          height: options.clip.height,
+        };
+        screenshotOptions.fullPage = false;
       }
-    } // async
-  ); // vscode.window.withProgress
+
+      await page.screenshot(screenshotOptions);
+      console.log(`Exported ${type.toUpperCase()} to ${filename}`);
+    }
+
+    await browser.close();
+
+    // Remove arquivo temporário, a menos que debug esteja ativo
+    if (!options.debug) {
+      if (fs.existsSync(tmpFilename)) {
+        fs.unlinkSync(tmpFilename);
+      }
+    }
+  } catch (error) {
+    console.error('exportPdf() error:', error);
+  }
 }
 
 /**
