@@ -8,14 +8,14 @@ const grayMatter = require('gray-matter');
 const highlight = require('highlight.js');
 const cheerio = require('cheerio');
 const markdownIt = require('markdown-it');
-const puppeteer = require('puppeteer-core');
+const puppeteer = require('puppeteer');
 
 /**
  * Converte arquivo Markdown em arquivo(s) nos formatos HTML, PDF, PNG ou JPEG
  * @param {string} inputPath - Caminho do arquivo Markdown
  * @param {string} [option_type='pdf'] - Tipo de saída: 'html', 'pdf', 'png', 'jpeg' ou 'all'
  */
-export async function markdownPdfStandalone(inputPath, option_type = 'pdf') {
+async function markdownPdfStandalone(inputPath, option_type = 'pdf') {
   try {
     const types_format = ['html', 'pdf', 'png', 'jpeg'];
     let types = [];
@@ -599,3 +599,5 @@ function showErrorMessage(msg, error) {
 function setBooleanValue(a, b) {
   return a === false ? false : Boolean(a || b);
 }
+
+module.exports = { markdownPdfStandalone };

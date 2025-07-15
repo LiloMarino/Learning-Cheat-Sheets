@@ -1,0 +1,18 @@
+/* Estilo para trechos de código inline */
+code {
+    background-color: #ffffff00 !important; /* Cor de fundo leve */
+    color: #b8332e !important; /* Cor do texto */
+    padding: 0 .2em;
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+pre > code {
+    padding: 0;
+    margin: 0;
+    font-weight: normal;
+}
+
+pre code {
+    font-weight: normal;
+}
