@@ -392,65 +392,6 @@ function isExistsDir(dirname) {
   }
 }
 
-function deleteFile (path) {
-  var rimraf = require('rimraf')
-  rimraf.sync(path);
-}
-
-function getOutputDir(filename, resource) {
-  try {
-    var outputDir;
-    if (resource === undefined) {
-      return filename;
-    }
-    var outputDirectory = vscode.workspace.getConfiguration('markdown-pdf')['outputDirectory'] || '';
-    if (outputDirectory.length === 0) {
-      return filename;
-    }
-
-    // Use a home directory relative path If it starts with ~.
-    if (outputDirectory.indexOf('~') === 0) {
-      outputDir = outputDirectory.replace(/^~/, os.homedir());
-      mkdir(outputDir);
-      return path.join(outputDir, path.basename(filename));
-    }
-
-    // Use path if it is absolute
-    if (path.isAbsolute(outputDirectory)) {
-      if (!isExistsDir(outputDirectory)) {
-        showErrorMessage(`The output directory specified by the markdown-pdf.outputDirectory option does not exist.\
-          Check the markdown-pdf.outputDirectory option. ` + outputDirectory);
-        return;
-      }
-      return path.join(outputDirectory, path.basename(filename));
-    }
-
-    // Use a workspace relative path if there is a workspace and markdown-pdf.outputDirectoryRootPath = workspace
-    var outputDirectoryRelativePathFile = vscode.workspace.getConfiguration('markdown-pdf')['outputDirectoryRelativePathFile'];
-    let root = vscode.workspace.getWorkspaceFolder(resource);
-    if (outputDirectoryRelativePathFile === false && root) {
-      outputDir = path.join(root.uri.fsPath, outputDirectory);
-      mkdir(outputDir);
-      return path.join(outputDir, path.basename(filename));
-    }
-
-    // Otherwise look relative to the markdown file
-    outputDir = path.join(path.dirname(resource.fsPath), outputDirectory);
-    mkdir(outputDir);
-    return path.join(outputDir, path.basename(filename));
-  } catch (error) {
-    showErrorMessage('getOutputDir()', error);
-  }
-}
-
-function mkdir(path) {
-  if (isExistsDir(path)) {
-    return;
-  }
-  var mkdirp = require('mkdirp');
-  return mkdirp.sync(path);
-}
-
 function readFile(filename, encode) {
   if (filename.length === 0) {
     return '';
@@ -515,65 +456,68 @@ function makeCss(filename) {
   }
 }
 
-function readStyles(uri) {
+/**
+ * Lê e concatena estilos CSS para o HTML final
+ * @param {string} basePath - Caminho base para resolver estilos relativos
+ * @param {object} config - Configurações equivalentes às do vscode.workspace.getConfiguration
+ * @returns {string} HTML contendo <style> e <link> para estilos
+ */
+function readStyles(basePath, config = {}) {
   try {
-    var includeDefaultStyles;
-    var style = '';
-    var styles = '';
-    var filename = '';
-    var i;
+    let style = '';
 
-    includeDefaultStyles = vscode.workspace.getConfiguration('markdown-pdf')['includeDefaultStyles'];
+    const includeDefaultStyles = config.includeDefaultStyles || false;
 
-    // 1. read the style of the vscode.
+    // 1. estilo markdown padrão
     if (includeDefaultStyles) {
-      filename = path.join(__dirname, 'styles', 'markdown.css');
+      const filename = path.join(__dirname, 'styles', 'markdown.css');
       style += makeCss(filename);
     }
 
-    // 2. read the style of the markdown.styles setting.
+    // 2. estilos adicionais do markdown.styles (array de URLs/paths)
     if (includeDefaultStyles) {
-      styles = vscode.workspace.getConfiguration('markdown')['styles'];
-      if (styles && Array.isArray(styles) && styles.length > 0) {
-        for (i = 0; i < styles.length; i++) {
-          var href = fixHref(uri, styles[i]);
-          style += '<link rel=\"stylesheet\" href=\"' + href + '\" type=\"text/css\">';
+      const styles = config.markdownStyles || [];
+      if (Array.isArray(styles) && styles.length > 0) {
+        for (const hrefStyle of styles) {
+          const href = fixHref(basePath, hrefStyle);
+          style += `<link rel="stylesheet" href="${href}" type="text/css">`;
         }
       }
     }
 
-    // 3. read the style of the highlight.js.
-    var highlightStyle = vscode.workspace.getConfiguration('markdown-pdf')['highlightStyle'] || '';
-    var ishighlight = vscode.workspace.getConfiguration('markdown-pdf')['highlight'];
-    if (ishighlight) {
+    // 3. estilo do highlight.js
+    const highlightEnabled = config.highlight || false;
+    const highlightStyle = config.highlightStyle || '';
+    if (highlightEnabled) {
+      let filename;
       if (highlightStyle) {
-        var css = vscode.workspace.getConfiguration('markdown-pdf')['highlightStyle'] || 'github.css';
-        filename = path.join(__dirname, 'node_modules', 'highlight.js', 'styles', css);
-        style += makeCss(filename);
+        filename = path.join(__dirname, 'node_modules', 'highlight.js', 'styles', highlightStyle);
       } else {
         filename = path.join(__dirname, 'styles', 'tomorrow.css');
-        style += makeCss(filename);
       }
-    }
-
-    // 4. read the style of the markdown-pdf.
-    if (includeDefaultStyles) {
-      filename = path.join(__dirname, 'styles', 'markdown-pdf.css');
       style += makeCss(filename);
     }
 
-    // 5. read the style of the markdown-pdf.styles settings.
-    styles = vscode.workspace.getConfiguration('markdown-pdf')['styles'] || '';
-    if (styles && Array.isArray(styles) && styles.length > 0) {
-      for (i = 0; i < styles.length; i++) {
-        var href = fixHref(uri, styles[i]);
-        style += '<link rel=\"stylesheet\" href=\"' + href + '\" type=\"text/css\">';
+    // 4. estilo markdown-pdf padrão
+    if (includeDefaultStyles) {
+      const filename = path.join(__dirname, 'styles', 'markdown-pdf.css');
+      style += makeCss(filename);
+    }
+
+    // 5. estilos adicionais do markdown-pdf.styles (array)
+    const mdPdfStyles = config.markdownPdfStyles || [];
+    if (Array.isArray(mdPdfStyles) && mdPdfStyles.length > 0) {
+      for (const hrefStyle of mdPdfStyles) {
+        const href = fixHref(basePath, hrefStyle);
+        style += `<link rel="stylesheet" href="${href}" type="text/css">`;
       }
     }
 
     return style;
+
   } catch (error) {
-    showErrorMessage('readStyles()', error);
+    console.error('readStyles() error:', error);
+    return '';
   }
 }
 
@@ -617,28 +561,6 @@ function fixHref(resource, href) {
     return vscode.Uri.file(path.join(path.dirname(resource.fsPath), href)).toString();
   } catch (error) {
     showErrorMessage('fixHref()', error);
-  }
-}
-
-function checkPuppeteerBinary() {
-  try {
-    // settings.json
-    var executablePath = vscode.workspace.getConfiguration('markdown-pdf')['executablePath'] || ''
-    if (isExistsPath(executablePath)) {
-      INSTALL_CHECK = true;
-      return true;
-    }
-
-    // bundled Chromium
-    const puppeteer = require('puppeteer-core');
-    executablePath = puppeteer.executablePath();
-    if (isExistsPath(executablePath)) {
-      return true;
-    } else {
-      return false;
-    }
-  } catch (error) {
-    showErrorMessage('checkPuppeteerBinary()', error);
   }
 }
 
