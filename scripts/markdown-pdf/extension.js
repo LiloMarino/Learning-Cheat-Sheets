@@ -521,46 +521,41 @@ function readStyles(basePath, config = {}) {
   }
 }
 
-/*
- * vscode/extensions/markdown-language-features/src/features/previewContentProvider.ts fixHref()
- * https://github.com/Microsoft/vscode/blob/0c47c04e85bc604288a288422f0a7db69302a323/extensions/markdown-language-features/src/features/previewContentProvider.ts#L95
- *
- * Extension Authoring: Adopting Multi Root Workspace APIs ?E Microsoft/vscode Wiki
- * https://github.com/Microsoft/vscode/wiki/Extension-Authoring:-Adopting-Multi-Root-Workspace-APIs
+/**
+ * Resolve href para uma URI adequada (file:// ou URL http/https)
+ * @param {string} basePath - caminho base para resolver paths relativos (ex: arquivo markdown)
+ * @param {string} href - href a ser resolvido (pode ser URL, path absoluto ou relativo)
+ * @returns {string} href absoluto como URL (file:// ou http://)
  */
-function fixHref(resource, href) {
+function fixHref(basePath, href) {
   try {
     if (!href) {
       return href;
     }
 
-    // Use href if it is already an URL
-    const hrefUri = vscode.Uri.parse(href);
-    if (['http', 'https'].indexOf(hrefUri.scheme) >= 0) {
-      return hrefUri.toString();
+    // Detecta se é URL http ou https
+    const parsedUrl = url.parse(href);
+    if (parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:') {
+      return href;
     }
 
-    // Use a home directory relative path If it starts with ^.
-    if (href.indexOf('~') === 0) {
-      return vscode.Uri.file(href.replace(/^~/, os.homedir())).toString();
+    // Expande ~ para home do usuário
+    if (href.startsWith('~')) {
+      return 'file://' + path.join(os.homedir(), href.slice(1));
     }
 
-    // Use href as file URI if it is absolute
+    // Path absoluto (começa com / no unix ou com letra:\ no windows)
     if (path.isAbsolute(href)) {
-      return vscode.Uri.file(href).toString();
+      // Normaliza para file:// URI
+      return 'file://' + href.replace(/\\/g, '/');
     }
 
-    // Use a workspace relative path if there is a workspace and markdown-pdf.stylesRelativePathFile is false
-    var stylesRelativePathFile = vscode.workspace.getConfiguration('markdown-pdf')['stylesRelativePathFile'];
-    let root = vscode.workspace.getWorkspaceFolder(resource);
-    if (stylesRelativePathFile === false && root) {
-      return vscode.Uri.file(path.join(root.uri.fsPath, href)).toString();
-    }
+    // Path relativo — resolve em relação ao basePath (ex: diretório do arquivo markdown)
+    return 'file://' + path.resolve(basePath, href).replace(/\\/g, '/');
 
-    // Otherwise look relative to the markdown file
-    return vscode.Uri.file(path.join(path.dirname(resource.fsPath), href)).toString();
   } catch (error) {
-    showErrorMessage('fixHref()', error);
+    console.error('fixHref() error:', error);
+    return href;
   }
 }
 
