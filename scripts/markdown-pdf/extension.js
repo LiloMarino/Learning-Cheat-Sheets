@@ -14,8 +14,9 @@ const puppeteer = require('puppeteer');
  * Converte arquivo Markdown em arquivo(s) nos formatos HTML, PDF, PNG ou JPEG
  * @param {string} inputPath - Caminho do arquivo Markdown
  * @param {string} [option_type='pdf'] - Tipo de saída: 'html', 'pdf', 'png', 'jpeg' ou 'all'
+ * @param {object} [options={}] - Opções para controle de plugins e features
  */
-async function markdownPdfStandalone(inputPath, option_type = 'pdf') {
+async function markdownPdfStandalone(inputPath, option_type = 'pdf', options = {}) {
   try {
     const types_format = ['html', 'pdf', 'png', 'jpeg'];
     let types = [];
@@ -42,7 +43,7 @@ async function markdownPdfStandalone(inputPath, option_type = 'pdf') {
         plantumlServer: 'https://www.plantuml.com/plantuml',
         enableInclude: true
       });
-      const html = makeHtml(content, inputPath);
+      const html = makeHtml(content, inputPath, options);
       await exportPdf(html, filename, type, {}); // pode-se passar options conforme necessidade
       console.log(`Exported to ${filename}`);
     }
@@ -186,7 +187,10 @@ function Slug(string) {
 function makeHtml(data, filename, options = {}) {
   try {
     let style = '';
-    style += readStyles(filename, options.stylesheetPaths);
+    style += readStyles(filename, {
+      includeDefaultStyles: true,
+      stylesheetPaths: options.stylesheetPaths
+    });
 
     const title = path.basename(filename);
 
