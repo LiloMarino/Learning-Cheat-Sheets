@@ -3,6 +3,7 @@ var path = require('path');
 var fs = require('fs');
 var url = require('url');
 var os = require('os');
+const mustache = require('mustache');
 const grayMatter = require('gray-matter');
 const highlight = require('highlight.js');
 const cheerio = require('cheerio');
@@ -179,38 +180,44 @@ function Slug(string) {
   }
 }
 
-/*
- * make html
+/**
+ * Gera HTML a partir do conteúdo convertido de Markdown
+ * @param {string} data - HTML do corpo (conteúdo convertido)
+ * @param {string} filename - Caminho do arquivo markdown original
+ * @param {object} options - Configurações adicionais
+ * @returns {string} HTML final com estilo, título e script Mermaid
  */
-function makeHtml(data, uri) {
+function makeHtml(data, filename, options = {}) {
   try {
-    // read styles
-    var style = '';
-    style += readStyles(uri);
+    // lê os estilos
+    let style = '';
+    style += readStyles(filename, options.stylesheetPaths);
 
-    // get title
-    var title = path.basename(uri.fsPath);
+    // título = nome do arquivo sem extensão
+    const title = path.basename(filename);
 
-    // read template
-    var filename = path.join(__dirname, 'template', 'template.html');
-    var template = readFile(filename);
+    // carrega template HTML
+    const templatePath = path.join(__dirname, 'template', 'template.html');
+    const template = readFile(templatePath);
 
-    // read mermaid javascripts
-    var mermaidServer = vscode.workspace.getConfiguration('markdown-pdf')['mermaidServer'] || '';
-    var mermaid = '<script src=\"' + mermaidServer + '\"></script>';
+    // script do Mermaid (se houver)
+    const mermaidServer = options.mermaidServer || '';
+    const mermaid = mermaidServer
+      ? `<script src="${mermaidServer}"></script>`
+      : '';
 
-    // compile template
-    var mustache = require('mustache');
-
-    var view = {
+    // preenche template com Mustache
+    const view = {
       title: title,
       style: style,
       content: data,
       mermaid: mermaid
     };
+
     return mustache.render(template, view);
   } catch (error) {
-    showErrorMessage('makeHtml()', error);
+    console.error('makeHtml()', error);
+    return '';
   }
 }
 
