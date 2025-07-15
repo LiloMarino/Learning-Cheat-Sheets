@@ -33,7 +33,9 @@ const options = {
   enableInclude: true, // sempre ligado
   outputDirectory: '',  // default atual, pode ser substituído abaixo
   stylesheetPaths: [],
-  executablePath: ''
+  executablePath: '',
+  highlight: true,
+  highlightStyle: 'tomorrow.css'
 };
 
 // Parse de opções com valores

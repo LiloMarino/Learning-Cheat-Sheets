@@ -166,11 +166,11 @@ function Slug(string) {
   try {
     return encodeURI(
       string.trim()
-            .toLowerCase()
-            .replace(/\s+/g, '-') // espaços viram -
-            .replace(/[\]\[\!\'\#\$\%\&\(\)\*\+\,\.\/\:\;\<\=\>\?\@\\\^\_\{\|\}\~\`。，、；：？！…—·ˉ¨‘’“”々～‖∶＂＇｀｜〃〔〕〈〉《》「」『』．〖〗【】（）［］｛｝]/g, '') // remove pontuação
-            .replace(/^\-+/, '') // remove - iniciais
-            .replace(/\-+$/, '') // remove - finais
+        .toLowerCase()
+        .replace(/\s+/g, '-') // espaços viram -
+        .replace(/[\]\[\!\'\#\$\%\&\(\)\*\+\,\.\/\:\;\<\=\>\?\@\\\^\_\{\|\}\~\`。，、；：？！…—·ˉ¨‘’“”々～‖∶＂＇｀｜〃〔〕〈〉《》「」『』．〖〗【】（）［］｛｝]/g, '') // remove pontuação
+        .replace(/^\-+/, '') // remove - iniciais
+        .replace(/\-+$/, '') // remove - finais
     );
   } catch (error) {
     showErrorMessage('Slug()', error);
@@ -189,8 +189,11 @@ function makeHtml(data, filename, options = {}) {
     let style = '';
     style += readStyles(filename, {
       includeDefaultStyles: true,
-      stylesheetPaths: options.stylesheetPaths
+      stylesheetPaths: options.stylesheetPaths,
+      highlight: options.highlight || false,
+      highlightStyle: options.highlightStyle || ''
     });
+
 
     const title = path.basename(filename);
 
@@ -514,7 +517,9 @@ function readStyles(basePath, config = {}) {
     if (highlightEnabled) {
       let filename;
       if (highlightStyle) {
-        filename = path.join(__dirname, 'node_modules', 'highlight.js', 'styles', highlightStyle);
+        const nodeStylePath = path.join(__dirname, 'node_modules', 'highlight.js', 'styles', highlightStyle);
+        const localStylePath = path.join(__dirname, 'styles', highlightStyle);
+        filename = fs.existsSync(nodeStylePath) ? nodeStylePath : localStylePath;
       } else {
         filename = path.join(__dirname, 'styles', 'tomorrow.css');
       }
