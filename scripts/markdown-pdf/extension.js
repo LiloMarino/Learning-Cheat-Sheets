@@ -32,10 +32,15 @@ async function markdownPdfStandalone(inputPath, option_type = 'pdf', options = {
 
     const ext = path.extname(inputPath);
     const markdownString = fs.readFileSync(inputPath, 'utf-8');
-    const uri = { fsPath: inputPath }; // mock para compatibilidade
+
+    if (options.outputDirectory && !fs.existsSync(options.outputDirectory)) {
+      fs.mkdirSync(options.outputDirectory, { recursive: true });
+    }
 
     for (const type of types) {
-      const filename = inputPath.replace(ext, '.' + type);
+      const basename = path.basename(inputPath, ext);
+      const outdir = options.outputDirectory || path.dirname(inputPath);
+      const filename = path.join(outdir, basename + '.' + type);
       const content = convertMarkdownToHtml(inputPath, type, markdownString, {
         breaks: true,
         emoji: true,
@@ -267,7 +272,7 @@ async function exportPdf(data, filename, type, options = {}) {
     await page.setDefaultTimeout(0);
 
     // Navega para o arquivo HTML temporário
-    await page.goto('file://' + tmpFilename, { waitUntil: 'networkidle0' });
+    await page.goto('file://' + path.resolve(tmpFilename).replace(/\\/g, '/'), { waitUntil: 'networkidle0' });
 
     if (type === 'html') {
       // Apenas salva o HTML final no destino
