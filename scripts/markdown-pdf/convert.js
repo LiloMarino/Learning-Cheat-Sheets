@@ -19,6 +19,13 @@ Options (via flags):
   --outdir=DIR      Diretório de saída
   --css=FILE        Caminho do CSS personalizado
   --chrome=PATH     Caminho do executável do Chrome/Chromium
+  --header               Ativa displayHeaderFooter
+  --headerTemplate=HTML  Template do header
+  --footerTemplate=HTML  Template do footer
+  --format=A4|Letter     Tamanho da página (default: A4)
+  --orientation=portrait|landscape  Orientação da página
+  --margin=top:1cm,...   Margens personalizadas
+
 `);
   process.exit(0);
 }
@@ -49,6 +56,31 @@ args.forEach(arg => {
   if (arg.startsWith('--chrome=')) {
     options.executablePath = arg.split('=')[1];
   }
+  if (arg === '--header') {
+    options.displayHeaderFooter = true;
+  }
+  if (arg.startsWith('--headerTemplate=')) {
+    options.headerTemplate = arg.split('=')[1];
+  }
+  if (arg.startsWith('--footerTemplate=')) {
+    options.footerTemplate = arg.split('=')[1];
+  }
+  if (arg.startsWith('--format=')) {
+    options.format = arg.split('=')[1];
+  }
+  if (arg.startsWith('--orientation=')) {
+    options.orientation = arg.split('=')[1];
+  }
+  if (arg.startsWith('--margin=')) {
+    // exemplo: --margin=top:1.5cm,right:1cm,bottom:1cm,left:1cm
+    const parts = arg.split('=')[1].split(',');
+    options.margin = {};
+    for (const part of parts) {
+      const [k, v] = part.split(':');
+      options.margin[k.trim()] = v.trim();
+    }
+  }
+
 });
 
 (async () => {

@@ -49,7 +49,7 @@ async function markdownPdfStandalone(inputPath, option_type = 'pdf', options = {
         enableInclude: true
       });
       const html = makeHtml(content, inputPath, options);
-      await exportPdf(html, filename, type, {}); // pode-se passar options conforme necessidade
+      await exportPdf(html, filename, type, options);
       console.log(`Exported to ${filename}`);
     }
   } catch (error) {
