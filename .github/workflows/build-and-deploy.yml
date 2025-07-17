@@ -1,0 +1,70 @@
+name: Build & Deploy Cheatsheets Site
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Setup Ruby & Bundler
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.1'
+          bundler-cache: true
+
+      - name: Install dependencies
+        run: |
+          npm install
+          bundle install
+
+      - name: Generate cheatsheets (HTML & PDF)
+        run: |
+          mkdir -p assets/html assets/pdfs assets/markdown
+          node scripts/copy-md.js
+          for file in cheatsheets/*.md; do
+            filename=$(basename "$file" .md)
+            node scripts/markdown-pdf/convert.js "$file" pdf --outdir=assets/pdfs
+            node scripts/markdown-pdf/convert.js "$file" html --outdir=assets/html
+          done
+
+      - name: Build Jekyll site
+        run: bundle exec jekyll build
+        env:
+          JEKYLL_ENV: production
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./_site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
