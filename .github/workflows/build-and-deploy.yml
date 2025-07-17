@@ -44,8 +44,8 @@ jobs:
           node scripts/copy-md.js
           for file in cheatsheets/*.md; do
             filename=$(basename "$file" .md)
-            node scripts/markdown-pdf/convert.js "$file" pdf --outdir=assets/pdfs
-            node scripts/markdown-pdf/convert.js "$file" html --outdir=assets/html
+            node scripts/markdown-pdf/convert.js "$file" pdf --css=scripts/markdown-pdf/custom.css --outdir=assets/pdfs
+            node scripts/markdown-pdf/convert.js "$file" html --css=scripts/markdown-pdf/custom.css --outdir=assets/html
           done
 
       - name: Build Jekyll site

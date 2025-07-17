@@ -546,6 +546,15 @@ function readStyles(basePath, config = {}) {
       }
     }
 
+    // 6. estilos definidos via --css
+    const stylesheetPaths = config.stylesheetPaths || [];
+    if (Array.isArray(stylesheetPaths) && stylesheetPaths.length > 0) {
+      for (const stylesheet of stylesheetPaths) {
+        const filename = path.resolve(stylesheet);
+        style += makeCss(filename);
+      }
+    }
+
     return style;
 
   } catch (error) {
