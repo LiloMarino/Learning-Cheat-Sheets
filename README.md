@@ -23,63 +23,77 @@ Tudo isso organizado em um site responsivo hospedado no GitHub Pages.
 
 ## 🤝 Como Usar
 
-### 🧪 Requisitos
+> \[!NOTE]
+> Este repositório é um *template*! Clique em **“Use this template”** no topo da página para criar o seu próprio.
 
-- Node.js (v18+)
-- Ruby com bundler (para rodar o Jekyll localmente, se desejar)
-- GitHub Pages (ativado no repositório)
+### 📁 Estrutura do Projeto
 
-### 🛠️ Passo a passo
+Após criar seu repositório, basta adicionar arquivos `.md` com front-matter na pasta `cheatsheets/`. Exemplo:
 
-1. **Fork este repositório**  
-   Crie sua própria cópia clicando em "Fork" no topo da página.
-
-2. **Adicione suas cheatsheets em `cheatsheets/`**  
-   Use arquivos `.md` com front-matter YAML no início:
-   ```markdown
-   ---
-   title: Python Básico
-   description: Comandos essenciais e estruturas básicas da linguagem.
-   ---
-
-   # Python Básico
-
-   ## Variáveis
-   ```
-
-3. **Gere os arquivos**
-   No terminal:
-
-   ```bash
-    npm install
-    mkdir -p assets/html assets/pdfs assets/markdown
-    node scripts/copy-md.js
-    for file in cheatsheets/*.md; do
-    node scripts/markdown-pdf/convert.js "$file" pdf --outdir=assets/pdfs
-    node scripts/markdown-pdf/convert.js "$file" html --outdir=assets/html
-    done
-   ```
-
-   Isso irá:
-
-   * Copiar os `.md` sem front-matter para `assets/markdown/`
-   * Gerar `.pdf` e `.html` em `assets/pdfs/` e `assets/html/`
-
-4. **Suba para o GitHub e ative o GitHub Pages**
-   Vá em **Settings → Pages** e selecione a branch `main` (ou `gh-pages` se você preferir separar).
-
+```markdown
+---
+title: Python Básico
+description: Comandos essenciais e estruturas básicas da linguagem.
 ---
 
-## 📦 Para Clonar e Usar Localmente
+# Python Básico
+
+## Variáveis
+```
+
+### 🚀 Publicando com GitHub Pages
+
+1. Crie seu repositório a partir do template
+2. Adicione suas cheatsheets em `cheatsheets/`
+3. Vá em **Settings → Pages** e selecione a branch `main` (ou `gh-pages`)
+
+Pronto! O site será publicado automaticamente com versões `.html`, `.pdf` e `.md` de cada arquivo.
+
+## 🖥️ Rodando Localmente
+
+### Dependências
+
+* [Node.js](https://nodejs.org/) (v18+)
+* [Ruby](https://www.ruby-lang.org/) com `bundler` (para rodar o Jekyll localmente)
+* `git` instalado
+
+### 1. Clone o projeto e instale dependências
 
 ```bash
 git clone https://github.com/LiloMarino/Learning-Cheat-Sheets.git
 cd Learning-Cheat-Sheets
-npm install
-npm run build
-bundle install
-bundle exec jekyll serve
+npm install       # Instala dependências Node.js
+bundle install    # Instala dependências Ruby (Jekyll)
 ```
+
+### 2. Gerar arquivos (`.pdf`, `.html`, `.md`)
+
+```bash
+mkdir -p assets/html assets/pdfs assets/markdown
+
+# Copia os .md limpos (sem front-matter)
+node scripts/copy-md.js
+
+# Converte os arquivos
+for file in cheatsheets/*.md; do
+  node scripts/markdown-pdf/convert.js "$file" pdf --outdir=assets/pdfs
+  node scripts/markdown-pdf/convert.js "$file" html --outdir=assets/html
+done
+```
+
+Isso irá:
+
+* ✅ Copiar os `.md` para `assets/markdown/`
+* ✅ Gerar `.pdf` em `assets/pdfs/`
+* ✅ Gerar `.html` em `assets/html/`
+
+### 3. Servir localmente com Jekyll
+
+```bash
+bundle exec jekyll serve --livereload
+```
+
+Acesse [http://localhost:4000](http://localhost:4000) no navegador.
 
 ## 📄 Créditos e Licenciamento de Terceiros
 
