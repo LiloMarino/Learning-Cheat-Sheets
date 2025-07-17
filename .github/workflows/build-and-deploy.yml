@@ -2,7 +2,7 @@ name: Build & Deploy Cheatsheets Site
 
 on:
   push:
-    branches: [main]
+    branches: [fix-workflow]
   workflow_dispatch:
 
 permissions:
