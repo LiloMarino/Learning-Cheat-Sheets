@@ -1,3 +1,7 @@
+---
+title: Léxico-Sintático LL(1) (Básico)
+description: Guia rápido sobre análise léxica e sintática LL(1), cobrindo etapas, transformações e implementação em C/C++.
+---
 # 📝 Léxico-Sintático Básico
 
 ## 🧩 Análise Léxica
@@ -168,15 +172,88 @@ std::cout << static_cast<int>(token) << " ";  // Ex: 0 1 2 6
 
 ## 📐 Análise Sintática LL(1) (Versão Descendente Recursiva)
 
-## 🎯 Objetivo
+### 🎯 Objetivo
 
 Interpretar uma **sequência de tokens** (gerada pelo lexer) de acordo com uma **gramática livre de contexto**, validando a **estrutura** da entrada e possibilitando a **tradução/execução**.
 
-## 🔷 LL(1): Características
+### 🔷 LL(1): Características
 
 * **L**eft-to-right: analisa da esquerda para a direita
 * **L**eftmost derivation: derivações mais à esquerda
 * **1** token de lookahead (pré-visualização)
+
+### ⚠️ Transformações importantes para LL(1)
+
+Algumas gramáticas precisam ser **reescritas** antes de serem usadas em parsers LL(1), especialmente quando contêm:
+
+1. **Recursão à esquerda**
+2. **Produções com prefixos comuns (fatoração)**
+
+---
+
+### ✅ Eliminar **Recursão à Esquerda**
+
+#### 📌 Problema:
+
+```bnf
+A → A α
+A → β
+```
+
+Isso é **recursão à esquerda direta**, e causa **loop infinito** no parser descendente.
+
+#### ✅ Solução:
+
+1. Transforme a recursão à esquerda em recursão à direita, criando uma nova produção: `A → A α` em `A' → A' α`
+2. Acrescente a novo não terminal no final de todas as produções de `A`: `A → β` em `A' → β A'`
+3. Adicione uma produção vazia para o novo não terminal criado `A'`: `A' → ε`
+
+Resultado:
+
+```bnf
+A → β A'
+A' → α A'
+A' → ε
+```
+
+#### 🧪 Exemplo:
+
+Antes:
+
+```
+Expr → Expr + Term 
+     | Term
+```
+
+Depois:
+
+```
+Expr → Term Expr'
+Expr' → + Term Expr' 
+      | ε
+```
+
+---
+
+### ✅ Fatoração (eliminar prefixos comuns)
+
+#### 📌 Problema:
+
+```bnf
+S → if E then S else S  
+S → if E then S
+```
+
+Os dois ramos começam com o mesmo prefixo: `if E then S`.
+
+#### ✅ Solução:
+
+Extraia o prefixo comum:
+
+```bnf
+S → if E then S S'
+S' → else S | ε
+```
 
 ### 🔶 Etapas
 
@@ -195,162 +272,221 @@ Essa gramática reconhece expressões como:
 * `id + id $`
 * `id + id + id $`
 
----
+#### ✅ 2. Calcule `FIRST`, `FOLLOW`, `NULLABLE`
 
-### ✅ 2. Calcule `FIRST`, `FOLLOW`, `NULLABLE`
+##### 🟦 Nullable:
 
-#### 🟨 FIRST Sets:
+| Símbolo | Nullable                  |
+| ------- | ------------------------- |
+| `S`     | ❌                         |
+| `E`     | ❌                         |
+| `R`     | ✅    (tem uma produção ε) |
+| `T`     | ❌                         |
+
+
+##### 🟨 FIRST Sets:
+
+Terminais:
 
 * `FIRST(id) = { id }`
 * `FIRST(+) = { + }`
-* `FIRST(E) = FIRST(T) = FIRST(id) = { id }`
-* `FIRST(R) = { +, ε }`
+* `FIRST($) = { $ }`
+
+Não terminais:
+
+* `FIRST(S) = FIRST(E) = { id }`
+* `FIRST(E) = FIRST(T) = { id }`
+* `FIRST(R) = { + }`
 * `FIRST(T) = { id }`
 
-#### 🟦 Nullable:
+##### 🟧 FOLLOW Sets:
 
-* `R` é nullable (tem uma produção ε)
+* `FOLLOW(S) = { }`
+* `FOLLOW(E) = FIRST($) = { $ }`
+* `FOLLOW(R) = FOLLOW(R) U FOLLOW(E) = { $ }`
+* `FOLLOW(T) = FIRST(R) U FOLLOW(E) U FOLLOW(R) = { +, $ }`
 
-#### 🟧 FOLLOW Sets:
+##### 🟪 Tabela `NULLABLE`, `FIRST` e `FOLLOW`:
 
-* `FOLLOW(S) = { $ }`
-* `FOLLOW(E) = { $ }`
-* `FOLLOW(R) = { $ }`
-* `FOLLOW(T) = { +, $ }`
+| Não terminal | Nullable | First | Follow |
+| ------------ | -------- | ----- | ------ |
+| `S`          | Não      | id    |        |
+| `E`          | Não      | id    | $      |
+| `R`          | Sim      | +     | $      |
+| `T`          | Não      | id    | +, $   |
 
----
+#### ✅ 3. Construa a tabela LL(1)
 
-### ✅ 3. Construa a tabela LL(1)
+| Não-terminal | `id`      | `+`         | `$`     |
+| ------------ | --------- | ----------- | ------- |
+| `S`          | `S → E $` |             |         |
+| `E`          | `E → T R` |             |         |
+| `R`          |           | `R → + T R` | `R → ε` |
+| `T`          | `T → id`  |             |         |
 
-| Não-terminal | `id`        | `+`     | `$`     |
-| ------------ | ----------- | ------- | ------- |
-| `S`          | `S → E $`   |         |         |
-| `E`          | `E → T R`   |         |         |
-| `R`          | `R → + T R` | `R → ε` | `R → ε` |
-| `T`          | `T → id`    |         |         |
+#### ✅ 4. Implementação do Parser (descendente recursivo)
 
----
+ 🧭 Como implementar o parser com a tabela LL(1)
 
-### ✅ 4. Representação da tabela
+> 💡 **Ideia central**:
+>
+> A tabela LL(1) funciona como um **roteiro para o parser**. Cada célula da tabela (`Não-terminal × Terminal`) informa **qual produção aplicar** com base no **token atual**.
+>
+> * O parser é implementado com funções recursivas que representam cada **não-terminal**.
+> * Cada função possui uma estrutura `switch-case` ou `if-else` com base no **token atual**, para executar a produção conforme indicada na tabela.
+> * Se a produção for do tipo `A → ε`, o bloco correspondente **não faz nada**.
+>
+> ⚠️ **Erros de sintaxe** são detectados quando o token atual **não corresponde** a nenhuma entrada válida na tabela para aquele não-terminal.
 
-#### 🟦 Em C:
+Exemplo visual da ideia:
 
-```c
-enum NonTerm { S_NT = 0, E_NT, R_NT, T_NT };
-enum Term { ID = 0, PLUS, DOLLAR };
-
-int table[4][3] = {
-/*           id   +     $   */
-/* S_NT */ {  1 , -1 ,  -1 },
-/* E_NT */ {  2 , -1 ,  -1 },
-/* R_NT */ {  3 ,  4 ,   4 },
-/* T_NT */ {  5 , -1 ,  -1 }
-};
-// 1 = S → E $, 2 = E → T R, 3 = R → + T R, 4 = R → ε, 5 = T → id
-```
-
-#### 🟪 Em C++:
+| Não-terminal | `+`         | `id` | `$`     |
+| ------------ | ----------- | ---- | ------- |
+| `R`          | `R → + T R` |      | `R → ε` |
 
 ```cpp
-enum class NonTerm { S = 0, E, R, T };
-enum class Term { ID = 0, PLUS, DOLLAR };
-
-int table[4][3] = {
-/*           ID  PLUS DOLLAR */
-/* S */     {  1 , -1 ,  -1 },
-/* E */     {  2 , -1 ,  -1 },
-/* R */     {  3 ,  4 ,   4 },
-/* T */     {  5 , -1 ,  -1 }
-};
-```
-
----
-
-### ✅ 5. Implementação do Parser (descendente recursivo)
-
-#### 🟦 Em C:
-
-```c
-void S() {
-    E();
-    eat(TOK_DOLLAR);
-}
-
-void E() {
-    T();
-    R();
-}
-
 void R() {
     if (token == TOK_PLUS) {
         eat(TOK_PLUS);
         T();
         R();
     }
-    // else: ε (fazer nada)
-}
-
-void T() {
-    eat(TOK_ID);
+    else if (token == TOK_DOLLAR) {
+        // Produção R → ε
+        // Nada é feito
+    }
+    else {
+        error("Token inesperado em R()");
+    }
 }
 ```
 
-#### 🟪 Em C++:
+##### 🟦 Em C:
 
-```cpp
+```c
+int token; // Token atual
+
+void advance() {
+    // Avança para o próximo token da entrada (via scanner/lexer)
+    token = next_token();  // Função fornecida pelo analisador léxico
+}
+
+void eat(int expected) {
+    // Verifica se o token atual é o esperado
+    // Se for, consome ele e avança
+    // Senão, lança erro de sintaxe
+    if (token == expected)
+    {
+        advance();
+    }
+    else
+    {
+        error("Token inesperado");
+    }
+}
+
 void S() {
+    // Produção S → E $
     E();
-    eat(TokenType::TOK_DOLLAR);
+    eat(TOK_DOLLAR);
 }
 
 void E() {
+    // Produção E → T R
     T();
     R();
 }
 
 void R() {
+    // Possui mais de uma produção então usamos a tabela LL(1)
+    if (token == TOK_PLUS) {
+        // Se for + ou TOK_PLUS (olhar coluna)
+        // Produção R → + T R
+        eat(TOK_PLUS);
+        T();
+        R();
+    }
+    if (token == TOK_DOLLAR) {
+        // Se for $ ou TOK_DOLLAR (olhar coluna)
+        // Produção R → ε
+        // Não faz nada
+    }
+}
+
+void T() {
+    // Produção T → id
+    eat(TOK_ID);
+}
+```
+
+##### 🟪 Em C++:
+
+```cpp
+TokenType token; // Token atual
+
+void advance() {
+    // Avança para o próximo token analisado pelo lexer
+    token = next_token();
+}
+
+void eat(TokenType expected) {
+    // Verifica se o token atual é o esperado
+    // Se sim, consome o token e avança
+    // Caso contrário, gera erro de sintaxe
+    if (token == expected)
+    {
+        advance();
+    }
+    else
+    {
+        throw std::runtime_error("Unexpected token");
+    }
+}
+
+void S() {
+    // Produção S → E $
+    E();
+    eat(TokenType::TOK_DOLLAR);
+}
+
+void E() {
+    // Produção E → T R
+    T();
+    R();
+}
+
+void R() {
+    // Possui mais de uma produção então usamos a tabela LL(1)
     if (token == TokenType::TOK_PLUS) {
+        // Se for + ou TOK_PLUS (olhar coluna)
+        // Produção R → + T R
         eat(TokenType::TOK_PLUS);
         T();
         R();
     }
-    // else: ε
+    if (token == TokenType::TOK_DOLLAR) {
+        // Se for $ ou TOK_DOLLAR (olhar coluna)
+        // Produção R → ε
+        // Nada é feito
+    }
 }
 
 void T() {
+    // Produção T → id
     eat(TokenType::TOK_ID);
 }
 ```
 
----
+#### ✅ 5. Funções auxiliares
 
-### ✅ 6. Funções auxiliares
+| Função      | Papel                                                                                            |
+| ----------- | ------------------------------------------------------------------------------------------------ |
+| `advance()` | Consulta o próximo token da entrada (pelo analisador léxico)                                     |
+| `eat(x)`    | **Verifica se o token atual é o esperado (`x`)**; se for, consome-o; senão, gera erro de sintaxe |
+| `token`     | Armazena o token atual sendo analisado pelo parser                                               |
 
-#### 🟦 Em C:
 
-```c
-void eat(int expected) {
-    if (token == expected)
-        advance();
-    else
-        error("Token inesperado");
-}
-```
-
-#### 🟪 Em C++:
-
-```cpp
-void eat(TokenType expected) {
-    if (token == expected)
-        advance();
-    else
-        error("Unexpected token");
-}
-```
-
----
-
-### ✅ 7. Exemplo de uso
+#### ✅ 6. Exemplo de uso
 
 Entrada: `id + id + id $`
 Tokens: `TOK_ID TOK_PLUS TOK_ID TOK_PLUS TOK_ID TOK_DOLLAR`
@@ -369,24 +505,3 @@ S()
             ├── T() → eat(id)
             └── R() → ε
 ```
-
----
-
-## ⚠️ Observações importantes
-
-* A **ordem das regras** nos `switch-case` segue os conjuntos `FIRST`/`FOLLOW` da gramática.
-* O símbolo `ε` (vazio) é implementado como **"não fazer nada"** em muitas linguagens.
-* **Atenção especial para conflitos léxicos**, como `+` vs `++`:
-
-  * Se você define `++` como token, ele deve ter **prioridade maior** na análise léxica:
-
-    ```c
-    if (line[pos] == '+' && line[pos+1] == '+') {
-        pos += 2; return TOK_PLUSPLUS;
-    }
-    if (line[pos] == '+') {
-        pos++; return TOK_PLUS;
-    }
-    ```
-
-
