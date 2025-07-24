@@ -2,15 +2,13 @@
 title: Léxico-Sintático LL(1) (Básico)
 description: Guia rápido sobre análise léxica e sintática LL(1), cobrindo etapas, transformações e implementação em C/C++.
 ---
-# 📝 Léxico-Sintático Básico
+# 📝 Léxico-Sintático LL(1) (Básico)
 
 ## 🧩 Análise Léxica
 
 ### 🎯 Objetivo
 
 Converter uma entrada bruta (código-fonte ou sequência de caracteres) em uma **lista de tokens** reconhecidos por um **autômato** ou lógica sequencial.
-
----
 
 ### 🔶 Etapas
 
@@ -23,8 +21,6 @@ Converter uma entrada bruta (código-fonte ou sequência de caracteres) em uma *
 * `(`
 * `)`
 * `$`
-
----
 
 #### ✅ 2. Definir os tokens
 
@@ -47,8 +43,6 @@ enum class TokenType {
     TOK_LPAREN, TOK_RPAREN, TOK_DOLLAR, TOK_UNKNOWN
 };
 ```
-
----
 
 #### ✅ 3. Implementar o lexer (scanner)
 
@@ -154,8 +148,6 @@ TokenType next_token(const std::string& line, size_t& pos) {
 }
 ```
 
----
-
 #### ✅ 4. Imprimir tokens (debugging)
 
 🟦 Versão em **C**:
@@ -188,8 +180,6 @@ Algumas gramáticas precisam ser **reescritas** antes de serem usadas em parsers
 
 1. **Recursão à esquerda**
 2. **Produções com prefixos comuns (fatoração)**
-
----
 
 ### ✅ Eliminar **Recursão à Esquerda**
 
@@ -232,8 +222,6 @@ Expr → Term Expr'
 Expr' → + Term Expr' 
       | ε
 ```
-
----
 
 ### ✅ Fatoração (eliminar prefixos comuns)
 
