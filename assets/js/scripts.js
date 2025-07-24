@@ -9,8 +9,8 @@ document.addEventListener('DOMContentLoaded', function () {
     let hasResults = false;
 
     cards.forEach(card => {
-      const title = card.getAttribute('data-title');
-      const match = title.includes(term);
+      const title = card.getAttribute('data-title') || '';
+      const match = title.toLowerCase().includes(term);
       card.classList.toggle('hidden', !match);
       if (match) hasResults = true;
     });
