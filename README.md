@@ -51,49 +51,42 @@ Pronto! O site será publicado automaticamente com versões `.html`, `.pdf` e `.
 
 ## 🖥️ Rodando Localmente
 
+Para desenvolver e visualizar o projeto localmente, consolidamos todas as etapas de *build* e execução em um único comando `npm start`.
+
 ### Dependências
 
-* [Node.js](https://nodejs.org/) (v18+)
-* [Ruby](https://www.ruby-lang.org/) com `bundler` (para rodar o Jekyll localmente)
-* `git` instalado
+  * **Node.js** (v18+) e um gerenciador de pacotes (como **npm** ou **pnpm**).
+  * **Ruby** com `bundler` (para rodar o Jekyll).
 
-### 1. Clone o projeto e instale dependências
+### 1\. Preparação Inicial (Clone e Instalação)
+
+Clone o repositório e use o seu gerenciador de pacotes para instalar todas as dependências (Node.js e Ruby) de uma só vez:
 
 ```bash
 git clone https://github.com/LiloMarino/Learning-Cheat-Sheets.git
 cd Learning-Cheat-Sheets
-npm install       # Instala dependências Node.js
-bundle install    # Instala dependências Ruby (Jekyll)
+npm install
+# ou
+pnpm install
 ```
 
-### 2. Gerar arquivos (`.pdf`, `.html`, `.md`)
+*O comando `npm install` (ou `pnpm install`) irá automaticamente instalar as dependências Node.js e, em seguida, executar o `bundle install` para as dependências Ruby.*
 
-```bash
-mkdir -p assets/html assets/pdfs assets/markdown
+### 2\. Gerar Arquivos e Servir Localmente
 
-# Copia os .md limpos (sem front-matter)
-node scripts/copy-md.js
+Use o comando correspondente ao seu sistema operacional. Ele irá limpar, gerar os arquivos (`.pdf`, `.html`, `.md`) e iniciar o servidor Jekyll.
 
-# Converte os arquivos
-for file in cheatsheets/*.md; do
-  node scripts/markdown-pdf/convert.js "$file" pdf --outdir=assets/pdfs
-  node scripts/markdown-pdf/convert.js "$file" html --outdir=assets/html
-done
-```
+| Seu Sistema | Comando para Executar |
+| :--- | :--- |
+| **WSL, Linux, macOS** | `pnpm dev:unix` |
+| **Windows (CMD/PowerShell)** | `pnpm dev:win` |
 
-Isso irá:
+Este comando executa duas etapas em sequência:
 
-* ✅ Copiar os `.md` para `assets/markdown/`
-* ✅ Gerar `.pdf` em `assets/pdfs/`
-* ✅ Gerar `.html` em `assets/html/`
+1.  **Gera os Assets:** Cria as pastas (`assets/html`, `assets/pdfs`, `assets/markdown`) e executa os scripts de conversão de todos os arquivos `.md` para os formatos `.pdf` e `.html`.
+2.  **Inicia o Servidor:** Executa o `bundle exec jekyll serve --livereload`, que sobe o servidor local com recarregamento automático.
 
-### 3. Servir localmente com Jekyll
-
-```bash
-bundle exec jekyll serve --livereload
-```
-
-Acesse [http://localhost:4000](http://localhost:4000) no navegador.
+**Acesse no navegador:** [http://localhost:4000](http://localhost:4000)
 
 ## 📄 Créditos e Licenciamento de Terceiros
 
