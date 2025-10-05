@@ -80,7 +80,7 @@ function convertMarkdownToHtml(filename, type, text, options = {}) {
         }
         if (lang && highlight.getLanguage(lang)) {
           try {
-            return `<pre class="hljs"><code><div>${highlight.highlight(lang, str, true).value}</div></code></pre>`;
+            return `<pre class="hljs"><code><div>${highlight.highlight(str, { language: lang, ignoreIllegals: true }).value}</div></code></pre>`;
           } catch {
             return `<pre class="hljs"><code>${md.utils.escapeHtml(str)}</code></pre>`;
           }
