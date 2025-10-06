@@ -5,12 +5,15 @@
     "postinstall": "bundle install",
     "clean:assets": "mkdirp assets/html assets/pdfs assets/markdown",
     "copy:md": "node scripts/copy-md.js",
+    "convert:pdfhtml": "node scripts/convert-both.js",
+    "watch:md": "chokidar 'cheatsheets/*.md' -c 'npm run convert:pdfhtml -- \"{path}\"'",
     "convert:unix": "for file in cheatsheets/*.md; do node scripts/markdown-pdf/convert.js \"$file\" pdf --css=scripts/markdown-pdf/custom.css --outdir=assets/pdfs; node scripts/markdown-pdf/convert.js \"$file\" html --css=scripts/markdown-pdf/custom.css --outdir=assets/html; done",
     "convert:win": "powershell -NoProfile -Command \"Get-ChildItem -Path cheatsheets -Filter *.md | ForEach-Object { node scripts/markdown-pdf/convert.js $_.FullName pdf --css=scripts/markdown-pdf/custom.css --outdir=assets/pdfs ; node scripts/markdown-pdf/convert.js $_.FullName html --css=scripts/markdown-pdf/custom.css --outdir=assets/html }\"",
     "build:base": "npm run clean:assets && npm run copy:md",
     "serve": "bundle exec jekyll serve --livereload",
-    "dev:unix": "npm run build:base && npm run convert:unix && npm run serve",
-    "dev:win": "npm run build:base && npm run convert:win && npm run serve",
+    "dev:unix": "npm run build:base && npm run convert:unix && npm run dev:incremental",
+    "dev:win": "npm run build:base && npm run convert:win && npm run dev:incremental",
+    "dev:incremental": "concurrently -k -n JEKYLL,CONVERT 'npm run serve' 'npm run watch:md'",
     "start:unix": "npm run dev:unix",
     "start:win": "npm run dev:win",
     "start": "echo 'ERRO: Use npm run start:unix ou npm run start:win'"
@@ -31,5 +34,9 @@
     "mustache": "^4.0.1",
     "puppeteer": "^24.23.0",
     "rimraf": "^3.0.2"
+  },
+  "devDependencies": {
+    "chokidar-cli": "^3.0.0",
+    "concurrently": "^9.2.1"
   }
 }
