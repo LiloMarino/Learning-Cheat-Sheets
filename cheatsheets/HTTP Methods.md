@@ -163,3 +163,16 @@ DELETE /tasks/1
 * Prefira **semântica correta** dos métodos.
 * Para alterações parciais, use `PATCH`; para substituições completas, use `PUT`.
 * Sempre use **HTTPS** e autenticação; valide inputs; evite expor dados sensíveis.
+
+---
+
+## 🧭 Leituras adicionais
+
+- 📘 [MDN Web Docs — Métodos de Requisição HTTP](https://developer.mozilla.org/pt-BR/docs/Web/HTTP/Methods)  
+  Guia completo e atualizado da Mozilla com descrições, exemplos e comportamento de cada método.
+
+- 📙 [RFC 9110 — HTTP Semantics (IETF)](https://datatracker.ietf.org/doc/html/rfc9110#name-method-definitions)  
+  Especificação oficial dos métodos HTTP segundo o padrão da Internet Engineering Task Force.
+
+- 📗 [REST API Tutorial — HTTP Methods](https://restfulapi.net/http-methods/)  
+  Explicações práticas sobre o uso de métodos HTTP dentro do contexto REST, com tabelas e exemplos claros.
