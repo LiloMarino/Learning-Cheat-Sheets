@@ -8,12 +8,14 @@
 </head>
 <body>
   <script>
-    mermaid.initialize({
-      startOnLoad: true,
-      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
-          ? 'dark'
-          : 'default'
-    });
+    if (window.mermaid) {
+      mermaid.initialize({
+        startOnLoad: true,
+        theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+            ? 'dark'
+            : 'default'
+      });
+    }
   </script>
 {{{content}}}
 </body>

@@ -8,6 +8,8 @@ const grayMatter = require('gray-matter');
 const highlight = require('highlight.js');
 const cheerio = require('cheerio');
 const markdownIt = require('markdown-it');
+const markdownItKatex = require('@vscode/markdown-it-katex').default;
+const katexVersion = require('katex/package.json').version;
 const puppeteer = require('puppeteer');
 
 /**
@@ -75,9 +77,6 @@ function convertMarkdownToHtml(filename, type, text, options = {}) {
       html: true,
       breaks: breaks,
       highlight: function (str, lang) {
-        if (lang && lang.match(/\bmermaid\b/i)) {
-          return `<div class="mermaid">${str}</div>`;
-        }
         if (lang && highlight.getLanguage(lang)) {
           try {
             return `<pre class="hljs"><code><div>${highlight.highlight(str, { language: lang, ignoreIllegals: true }).value}</div></code></pre>`;
@@ -112,8 +111,21 @@ function convertMarkdownToHtml(filename, type, text, options = {}) {
       };
     }
 
+    // Bloco mermaid vira contêiner próprio, fora do <pre><code> que o markdown-it põe em volta do highlight
+    const defaultFence = md.renderer.rules.fence;
+    md.renderer.rules.fence = function (tokens, idx, opts, env, self) {
+      const token = tokens[idx];
+      if (token.info.trim().match(/^mermaid\b/i)) {
+        return `<div class="mermaid">${md.utils.escapeHtml(token.content)}</div>\n`;
+      }
+      return defaultFence(tokens, idx, opts, env, self);
+    };
+
     // Plugins
     md.use(require('markdown-it-checkbox'));
+
+    // Mesma sintaxe de fórmula do preview do VS Code: $...$, $$...$$ e ```math
+    md.use(markdownItKatex, { enableBareBlocks: true, enableFencedBlocks: true });
 
     const enableEmoji = setBooleanValue(matterParts.data.emoji, options.emoji ?? false);
     if (enableEmoji) {
@@ -205,8 +217,13 @@ function makeHtml(data, filename, options = {}) {
     const templatePath = path.join(__dirname, 'template', 'template.html');
     const template = readFile(templatePath);
 
+    // KaTeX e Mermaid entram só nas páginas que têm fórmula ou diagrama
+    if (data.includes('class="katex')) {
+      style += `<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@${katexVersion}/dist/katex.min.css">\n`;
+    }
+
     const mermaidServer = options.mermaidServer || '';
-    const mermaid = mermaidServer
+    const mermaid = mermaidServer && data.includes('class="mermaid"')
       ? `<script src="${mermaidServer}"></script>`
       : '';
 
@@ -273,6 +290,19 @@ async function exportPdf(data, filename, type, options = {}) {
 
     // Navega para o arquivo HTML temporário
     await page.goto('file://' + path.resolve(tmpFilename).replace(/\\/g, '/'), { waitUntil: 'networkidle0' });
+
+    if (type !== 'html') {
+      // O Mermaid desenha no navegador depois do load: a captura espera cada diagrama virar SVG e as fontes do KaTeX carregarem
+      try {
+        await page.waitForFunction(
+          () => [...document.querySelectorAll('.mermaid')].every(el => el.querySelector('svg')),
+          { timeout: 30000 }
+        );
+      } catch {
+        console.error(`Mermaid não renderizou em ${filename}; os diagramas saem como texto.`);
+      }
+      await page.evaluate(() => document.fonts.ready);
+    }
 
     if (type === 'html') {
       // Apenas salva o HTML final no destino

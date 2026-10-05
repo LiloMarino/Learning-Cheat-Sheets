@@ -42,7 +42,8 @@ const options = {
   stylesheetPaths: [],
   executablePath: '',
   highlight: true,
-  highlightStyle: 'tomorrow.css'
+  highlightStyle: 'tomorrow.css',
+  mermaidServer: 'https://cdn.jsdelivr.net/npm/mermaid@12.1.0/dist/mermaid.min.js'
 };
 
 // Parse de opções com valores

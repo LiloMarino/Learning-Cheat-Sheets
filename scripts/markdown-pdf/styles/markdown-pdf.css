@@ -30,6 +30,10 @@ blockquote {
 	height: 1.4em;
 }
 
+.mermaid {
+	text-align: center;
+}
+
 code {
 	font-size: 14px;
 	line-height: 19px;
