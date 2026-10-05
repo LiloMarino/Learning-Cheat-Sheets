@@ -7,3 +7,4 @@ node_modules
 assets/markdown/
 assets/pdfs/
 assets/html/
+/*.pdf
