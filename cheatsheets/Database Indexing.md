@@ -9,6 +9,36 @@ description: Tipos de índice e quanto custa buscar com cada um. A árvore B+ na
 
 ---
 
+## 🧭 Comece aqui
+
+**A ideia em uma frase.** Pense no índice remissivo no fim de um livro. Em vez de ler o livro inteiro para achar um assunto, você procura o assunto numa lista **em ordem alfabética**, e ela diz a página. O índice do banco é igual: uma lista ordenada de `<chave, rid>`, em que o **rid** diz em que bloco do arquivo de dados está a linha. A **árvore B+** é essa lista organizada em **níveis**: a **raiz** diz em que parte procurar, e as **folhas** guardam as chaves com os rids. Cada nó é um bloco, então descer um nível é ler 1 bloco. Com 2 ou 3 níveis, o banco acha qualquer chave lendo 2 ou 3 blocos, em vez do arquivo inteiro.
+
+**O que a questão pede.** O desenho da árvore B+ depois de uma sequência de `INSERT` e `DELETE`, com os nós numerados, as entradas e as setas, e o desenho do arquivo do índice (que bloco é cada nó).
+
+**Palavras que vão aparecer:**
+
+* **Chave de busca**: o valor pelo qual se procura (ex.: o `id`).
+* **rid**: o endereço da linha no arquivo de dados, formado por bloco + slot (ver "Banco de Dados: Organização de Arquivos").
+* **Raiz / nó interno / folha**: o topo da árvore, os nós do meio (só chaves e setas) e o nível de baixo (chaves + rids).
+* **Separador**: a chave de um nó interno que divide "para a esquerda" de "para a direita".
+* **Split**: quando um nó enche demais e se divide em dois.
+* **Unsplit** (junção): quando um nó fica vazio demais e se junta a um vizinho.
+* **Underflow**: um nó com menos entradas que o mínimo (menos da metade da capacidade).
+* **Fan-out**: quantas setas saem de um nó, ou seja, quantos filhos ele tem.
+
+**Onde este arquivo se encaixa.** É o **2º de 3**. Os rids das folhas vêm do arquivo de dados ("Banco de Dados: Organização de Arquivos"). O número de níveis ($x$) e de folhas ($b_{leaf}$) do índice entram nas contas de "Banco de Dados: Custo de Consultas".
+
+**Se você está perdido, leia nesta ordem:**
+
+1. Este "Comece aqui".
+2. A seção 4 (estrutura e **como uma busca anda na árvore**).
+3. O **exemplo clássico (seção 11)**, que é pequeno e mostra todos os tipos de split.
+4. O **exemplo resolvido completo (seção 12)**, acompanhando a **Receita (seção 10)**.
+
+As seções 2 e 3 são teoria de consulta; dá para deixá-las por último.
+
+---
+
 ## 🗂️ 1. O que é um índice
 
 * Estrutura que agiliza o acesso aos dados: um arquivo com entradas `<chave de busca, rowId>`. É como o índice remissivo de um livro.
@@ -37,6 +67,8 @@ description: Tipos de índice e quanto custa buscar com cada um. A árvore B+ na
 
 ## ⏱️ 3. Quanto custa buscar (exemplo resolvido)
 
+*Se está começando, pule para a seção 4 e volte aqui depois. Esta seção compara números de acessos e usa os termos da seção 2.*
+
 > Exemplo clássico do livro de Elmasri & Navathe. O arquivo tem $r = 30\,000$ registros de $R = 100$ B, em blocos de $B = 1024$ B (unspanned). Uma entrada de índice tem chave de 9 B + ponteiro de 6 B = 15 B.
 
 $$Bfr = \left\lfloor \frac{1024}{100} \right\rfloor = 10 \qquad b = \frac{30\,000}{10} = 3\,000 \qquad Bfr_i = \left\lfloor \frac{1024}{15} \right\rfloor = 68$$
@@ -64,6 +96,33 @@ $Bfr_i = 68$ é o **fan-out**: quantas entradas de índice cabem num bloco.
 * **Folha:** $[\langle K_1, Pr_1\rangle, \dots, \langle K_{q-1}, Pr_{q-1}\rangle, P_{\text{próx}}]$, em que cada $Pr$ é o rowId do registro e $P_{\text{próx}}$ aponta para a próxima folha (as folhas formam uma lista encadeada).
 * **Convenção "≤ vai para a esquerda":** um valor $X$ na subárvore de $P_i$ obedece $X \le K_1$ (para $i = 1$), $K_{i-1} < X \le K_i$ (no meio) ou $X > K_{q-1}$ (no último ponteiro).
 * **Ocupação mínima:** o nó interno (fora a raiz) tem pelo menos $\lceil p/2 \rceil$ ponteiros, a folha tem pelo menos metade da capacidade e a raiz tem pelo menos 2 ponteiros.
+
+### 🔎 Como uma busca anda na árvore
+
+Esta é a árvore final do exemplo resolvido (seção 12). Cada folha guarda `chave rid`, e a última linha é a lista encadeada das folhas:
+
+```
+                n3 ( CR3 | GN2 | NB2 | W10 )
+      ┌───────────┬───────────┼───────────┬───────────┐
+      ▼           ▼           ▼           ▼           ▼
+     n1          n7          n5          n6          n4
+  AMP 0202    GE2 0302    MSP 0105    RSR 0204    WFL 0203
+  AZA 0102    GN2 0205    NB2 0103    W10 0101    WRF 0104
+  CR3 0303                                        WRP 0201
+     n1 ───────► n7 ───────► n5 ───────► n6 ───────► n4 ──► NULL
+```
+
+**Buscar RSR (busca pontual).** Na raiz, compare RSR com os separadores da esquerda para a direita e desça pelo **primeiro** cuja chave é **≥ RSR**:
+
+1. RSR > CR3, RSR > GN2, RSR > NB2, e RSR ≤ W10. Desça pela seta à esquerda do W10 até o **n6**.
+2. Na folha n6 está `RSR 0204`: a linha está no **bloco 02, slot 04** do arquivo de dados.
+3. Total: 2 blocos de índice (n3, n6) + 1 bloco de dados = **3 acessos**, em vez de ler o arquivo inteiro.
+
+**Por que "≤ vai para a esquerda".** O separador é a **maior chave da subárvore da esquerda**: NB2 é a última chave de n5. Para buscar o próprio NB2, compare NB2 ≤ NB2: verdadeiro, então desça à esquerda e chegue no n5. Por isso, no split, é a maior chave da metade esquerda que sobe.
+
+**Buscar de GE2 até NB2 (busca por intervalo).** Desça até a folha do GE2 (n7) como na busca pontual. Depois **siga a lista encadeada**: n7 (GE2, GN2) → n5 (MSP, NB2), e pare quando passar de NB2. Não precisa voltar à raiz, e é **para isso** que as folhas são encadeadas.
+
+**E quando insere ou remove?** A árvore precisa continuar assim: chaves em ordem, todas as folhas no mesmo nível e cada nó com pelo menos metade da capacidade. O **split** (nó cheio demais) e o **unsplit** (nó vazio demais) são os consertos que mantêm isso. As seções 7 e 8 mostram como fazer cada um.
 
 ---
 

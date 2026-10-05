@@ -9,6 +9,37 @@ description: Como as tuplas ocupam os blocos de um arquivo de dados. Tamanho de 
 
 ---
 
+## 🧭 Comece aqui
+
+**A ideia em uma frase.** O disco não lê um dado de cada vez: ele lê **páginas inteiras**, como um caderno em que você só consegue abrir uma página por vez. O banco guarda cada tabela num arquivo feito dessas páginas, chamadas **blocos**, todas do mesmo tamanho (ex.: 256 bytes). Cada linha da tabela ocupa um pedaço de algum bloco. Este cheat sheet ensina a responder: *depois desses comandos, em que bloco e em que posição ficou cada linha?*
+
+**O que a questão pede.** Um desenho dos blocos do arquivo, com cada linha no lugar certo (`[chave, ...]`), os espaços vazios, a lista de espaços livres e o cabeçalho do arquivo.
+
+**Palavras que vão aparecer:**
+
+* **Tupla** (ou **registro**): uma linha da tabela.
+* **Bloco** (ou **página**): um pedaço de tamanho fixo do arquivo. É a unidade que o disco lê.
+* **Slot**: a posição de uma tupla dentro do bloco (1ª, 2ª, 3ª…).
+* **rid** (*row id*): o endereço da tupla, formado pelo número do bloco + número do slot. `0302` é o bloco 03, slot 02.
+* **Free list**: a lista dos buracos que os `DELETE` deixaram, no formato `<rid, tamanho>`, para reaproveitar depois.
+* **PCTFREE**: a porcentagem de cada bloco que o `INSERT` deixa vazia, para as tuplas crescerem num `UPDATE` futuro.
+* **Migração**: quando um `UPDATE` aumenta a tupla e ela não cabe mais no bloco. Ela muda de lugar e de rid.
+
+```
+arquivo da tabela product (blocos de 256 B)
+
+bloco 01:  [W10]  [AZA]  [NB2]  [WRF]  [MSP]     ← 5 tuplas, sobram 2 B
+            0101   0102   0103   0104   0105     ← rid = bloco + slot
+bloco 02:  [WRP]  [AMP]  [WFL]  [RSR]  [GN2]
+            0201   0202   0203   0204   0205
+```
+
+**Onde este arquivo se encaixa.** É o **1º de 3**. Os rids que saem daqui são exatamente o que o índice guarda nas folhas ("Banco de Dados: Indexação e Árvore B+"). O número de blocos de cada tabela é a base de toda conta de custo ("Banco de Dados: Custo de Consultas").
+
+**Se você está perdido, leia nesta ordem:** este "Comece aqui", depois o **Exemplo resolvido (seção 8)** acompanhando a **Receita (seção 7)** passo a passo. As seções 1 a 6 são de consulta: volte a elas quando uma conta do exemplo não fizer sentido.
+
+---
+
 ## 🧱 1. Conceitos de apoio
 
 | Conceito | O que é | Por que importa no exercício |

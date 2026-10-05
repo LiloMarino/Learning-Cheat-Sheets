@@ -9,6 +9,31 @@ description: Como estimar o custo, em acessos a bloco, de uma árvore de execuç
 
 ---
 
+## 🧭 Comece aqui
+
+**A ideia em uma frase.** O banco consegue responder a mesma consulta de vários jeitos: ler a tabela inteira, usar um índice, juntar duas tabelas de formas diferentes. A parte lenta é **ler do disco**, então o custo de cada jeito é medido em **quantos blocos ele lê**. O banco calcula o custo de todos os jeitos e escolhe o mais barato, e a prova pede que você faça a mesma conta.
+
+**Uma analogia.** Você precisa achar as fichas dos alunos com nota 10 numa pilha com centenas de fichas. Jeito 1: olhar todas, o que sempre funciona. Jeito 2: usar uma lista separada, organizada por nota, que diz onde está cada ficha (um **índice**). O jeito 2 compensa **se forem poucos alunos**. Se metade da turma tirou 10, você acaba abrindo quase todas as fichas de qualquer jeito, e ainda pagou para ler a lista. Toda a matéria é essa comparação, com números.
+
+**O que a questão pede.** Uma árvore com as operações da consulta. Para cada operação: liste todos os métodos possíveis, calcule o custo de cada um (ou diga por que não se aplica), escolha o menor e, no fim, some.
+
+**Palavras que vão aparecer:**
+
+* **Bloco**: a página do arquivo que o disco lê de uma vez. **Custo = número de blocos lidos.**
+* **Seleção (σ)**: filtra linhas (o `WHERE`).
+* **Junção (⨝)**: combina linhas de duas tabelas (o `JOIN`).
+* **Projeção (π)**: escolhe colunas (o `SELECT colunas`).
+* **Seletividade**: que fração das linhas passa no filtro. 20% = 200 de 1 000 linhas.
+* **Índice**: a "lista organizada" da analogia (ver "Banco de Dados: Indexação e Árvore B+").
+* **Buffer**: quantos blocos cabem na memória ao mesmo tempo durante uma junção ou ordenação.
+* **Externa / interna**: numa junção por laços, a tabela do laço de fora e a do laço de dentro.
+
+**Onde este arquivo se encaixa.** É o **3º de 3**. Ele usa o número de blocos de cada tabela ("Banco de Dados: Organização de Arquivos") e os níveis e folhas dos índices ("Banco de Dados: Indexação e Árvore B+").
+
+**Se você está perdido, leia nesta ordem:** este "Comece aqui", depois o **Exemplo resolvido (seção 11)** acompanhando a **Receita (seção 10)**. As seções 3 a 9 explicam cada conta do exemplo: volte a elas quando um número não fizer sentido.
+
+---
+
 ## ⚙️ 1. Como o SGBD processa uma consulta
 
 ```mermaid
@@ -35,7 +60,14 @@ O pipelining usa **iteradores**: `Open()` prepara a operação, `GetNext()` devo
 
 ## 📖 2. Notação
 
-Os valores ao lado são os do exemplo resolvido (seção 11).
+**Não decore esta tabela:** cada símbolo aparece explicado na conta em que é usado. Quatro deles aparecem em quase toda conta:
+
+* $b$ = blocos da tabela;
+* $r$ = linhas;
+* $s$ = linhas que passam no filtro;
+* $x$ = níveis do índice.
+
+A tabela completa abaixo é de consulta. Os valores ao lado são os do exemplo resolvido (seção 11).
 
 | Símbolo | Significado | Exemplo |
 | :-: | :-- | :-- |
